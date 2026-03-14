@@ -49,17 +49,8 @@
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
-       allowLocationSimulation = "YES"
-       enableGPUValidationMode = "1"
-       disableMainThreadChecker = "NO"
-       enableUBSanitizer = "NO">
-      <EnvironmentVariables>
-         <EnvironmentVariable
-            key = "MTL_HUD_ENABLED"
-            value = "0"
-            isEnabled = "YES">
-         </EnvironmentVariable>
-      </EnvironmentVariables>
+      enableGPUValidationMode = "1"
+      allowLocationSimulation = "YES">
       <BuildableProductRunnable
          runnableDebuggingMode = "0">
          <BuildableReference
@@ -70,6 +61,13 @@
             ReferencedContainer = "container:SleepAnalyser.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <EnvironmentVariables>
+         <EnvironmentVariable
+            key = "MTL_HUD_ENABLED"
+            value = "0"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+      </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"

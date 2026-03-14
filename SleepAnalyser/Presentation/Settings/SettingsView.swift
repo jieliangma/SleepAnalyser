@@ -20,19 +20,10 @@ struct LanguageSettingsTab: View {
             Section(L10n.languageSelection) {
                 Picker(L10n.language, selection: $languageManager.currentLanguage) {
                     ForEach(AppLanguage.allCases) { lang in
-                        HStack {
-                            Text(lang.nativeDisplayName)
-                            if lang == .system {
-                                Spacer()
-                                Image(systemName: "gear")
-                                    .font(.caption)
-                                    .foregroundStyle(AppColors.textTertiary)
-                            }
-                        }
-                        .tag(lang)
+                        Text(lang.nativeDisplayName).tag(lang)
                     }
                 }
-                .pickerStyle(.radioGroup)
+                .pickerStyle(.menu)
 
                 Text(L10n.languageNote)
                     .font(AppTypography.caption)
