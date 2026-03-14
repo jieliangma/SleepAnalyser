@@ -11,7 +11,8 @@ struct MenuBarView: View {
             Divider().padding(.horizontal, AppSpacing.md)
             actionsSection
         }
-        .frame(width: 300)
+        .fixedSize(horizontal: true, vertical: true)
+        .frame(minWidth: 200)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 

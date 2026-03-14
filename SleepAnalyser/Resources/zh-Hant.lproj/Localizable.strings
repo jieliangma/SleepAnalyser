@@ -46,6 +46,7 @@
 "profile.defaultUser" = "預設用戶";
 "profile.defaultMic" = "預設麥克風";
 "profile.switch" = "切換";
+"profile.active" = "使用中";
 "profile.deleteTitle" = "刪除用戶";
 "profile.deleteConfirm" = "刪除";
 "profile.deleteMessage" = "確定要刪除「%@」嗎？該用戶的所有睡眠資料將被永久移除。";

@@ -58,6 +58,7 @@ enum L10n {
     static var defaultUser: String { s("profile.defaultUser") }
     static var defaultMicrophone: String { s("profile.defaultMic") }
     static var profileSwitch: String { s("profile.switch") }
+    static var profileActive: String { s("profile.active") }
     static var profileDeleteTitle: String { s("profile.deleteTitle") }
     static var profileDeleteConfirm: String { s("profile.deleteConfirm") }
     static var cancel: String { s("common.cancel") }
