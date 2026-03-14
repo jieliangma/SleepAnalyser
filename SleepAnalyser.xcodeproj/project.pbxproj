@@ -112,6 +112,7 @@
 		3D5D979D4172E41389573D0D = {isa = PBXBuildFile; fileRef = 4BEEFD6B9CAAC17105BACE74; };
 		C6ED60D4582989147594FBEE = {isa = PBXBuildFile; fileRef = E619F7E1A40785B485E8B234; };
 		7E72933C3545E359B6D0C066 = {isa = PBXBuildFile; fileRef = 4A2458027908C835412B6F11; };
+		157873082C4314596C51F67D = {isa = PBXBuildFile; fileRef = CB32973FF6828BE27BC5AE1C; };
 		98C18A11A40B0AE418AB3FB0 = {isa = PBXBuildFile; fileRef = 67ECCD1906A7892F17D4F88D; };
 		9886CA6FA576212DD9584517 = {isa = PBXBuildFile; fileRef = 4185F265BF49546D88EEFB7D; };
 		EE43D85D800EBB783558BDCC = {isa = PBXBuildFile; fileRef = D3DD97ADCA3DF7395E8A458F; };
@@ -252,6 +253,7 @@
 		4BEEFD6B9CAAC17105BACE74 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Array+Stats.swift"; sourceTree = "<group>"; };
 		E619F7E1A40785B485E8B234 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Sleep.swift"; sourceTree = "<group>"; };
 		4A2458027908C835412B6F11 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "L10n.swift"; sourceTree = "<group>"; };
+		CB32973FF6828BE27BC5AE1C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LanguageManager.swift"; sourceTree = "<group>"; };
 		67ECCD1906A7892F17D4F88D = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioPreprocessorTests.swift"; sourceTree = "<group>"; };
 		4185F265BF49546D88EEFB7D = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RingBufferTests.swift"; sourceTree = "<group>"; };
 		D3DD97ADCA3DF7395E8A458F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SpectralFeatureExtractorTests.swift"; sourceTree = "<group>"; };
@@ -639,7 +641,12 @@
 		};
 		AE15F304FDE1D980870A4C8F = {
 			isa = PBXGroup;
-			children = (E313D1FE4A27F86EEE9BDA17, 0709C1C5FCDE00E36E5C9CC9, 4A2458027908C835412B6F11);
+			children = (
+				E313D1FE4A27F86EEE9BDA17,
+				0709C1C5FCDE00E36E5C9CC9,
+				4A2458027908C835412B6F11,
+				CB32973FF6828BE27BC5AE1C,
+			);
 			path = "Utilities";
 			sourceTree = "<group>";
 		};
@@ -864,6 +871,7 @@
 				3D5D979D4172E41389573D0D,
 				C6ED60D4582989147594FBEE,
 				7E72933C3545E359B6D0C066,
+				157873082C4314596C51F67D,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -116,4 +116,17 @@
 "insight.declining" = "睡眠效率近期有所下降。检查一下你的睡前习惯。";
 "insight.consistent" = "这段时期的睡眠效率一直保持稳定。";
 
+"settings.language" = "语言";
+"settings.languageSelection" = "显示语言";
+"settings.languageNote" = "更改应用界面语言，立即生效。";
+
+"insight.goodDuration" = "太棒了！你睡了 %@ 小时，在推荐范围内。";
+"insight.shortSleep" = "你只睡了 %@ 小时。建议每晚睡 7-9 小时以获得最佳恢复。";
+"insight.awakenings" = "你醒了 %d 次。建议减少卧室的噪音和光线。";
+"insight.trafficNoise" = "交通噪音干扰了你的睡眠 %d 次。考虑使用耳塞或白噪音机。";
+"insight.disturbances" = "夜间检测到 %d 次干扰。";
+"insight.snoring" = "检测到明显打鼾（%d 次）。如果持续出现，建议咨询睡眠专家。";
+"insight.goodScore" = "整体睡眠质量良好，平均评分 %d。";
+"insight.poorScore" = "平均睡眠评分 %d，有改善空间。建议保持作息规律和充足睡眠时间。";
+
 "NSMicrophoneUsageDescription" = "睡眠分析需要使用麦克风来分析你睡眠期间的呼吸模式。";

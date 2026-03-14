@@ -116,4 +116,17 @@
 "insight.declining" = "Sleep efficiency has declined recently. Review your bedtime routine.";
 "insight.consistent" = "Sleep efficiency has been consistent this period.";
 
+"settings.language" = "Language";
+"settings.languageSelection" = "Display Language";
+"settings.languageNote" = "Change the app interface language. Takes effect immediately.";
+
+"insight.goodDuration" = "Great job! You got %@ hours of sleep, within the recommended range.";
+"insight.shortSleep" = "You only slept %@ hours. Aim for 7-9 hours for optimal recovery.";
+"insight.awakenings" = "You had %d awakenings. Consider reducing noise and light in your bedroom.";
+"insight.trafficNoise" = "Traffic noise disturbed your sleep %d times. Consider earplugs or a white noise machine.";
+"insight.disturbances" = "%d disturbances were detected during the night.";
+"insight.snoring" = "Significant snoring was detected (%d events). If persistent, consider consulting a sleep specialist.";
+"insight.goodScore" = "Overall sleep quality is good with an average score of %d.";
+"insight.poorScore" = "Average sleep score of %d suggests room for improvement. Focus on consistency and duration.";
+
 "NSMicrophoneUsageDescription" = "SleepAnalyser needs microphone access to analyze your breathing patterns during sleep.";

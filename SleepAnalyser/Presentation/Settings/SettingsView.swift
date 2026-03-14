@@ -3,11 +3,43 @@ import SwiftUI
 struct SettingsView: View {
     var body: some View {
         TabView {
+            LanguageSettingsTab().tabItem { Label(L10n.language, systemImage: "globe") }
             AudioSettingsTab().tabItem { Label(L10n.audio, systemImage: "mic.fill") }
             PrivacySettingsTab().tabItem { Label(L10n.privacy, systemImage: "lock.fill") }
             AboutTab().tabItem { Label(L10n.about, systemImage: "info.circle.fill") }
         }
         .padding(AppSpacing.lg)
+    }
+}
+
+struct LanguageSettingsTab: View {
+    @Bindable private var languageManager = LanguageManager.shared
+
+    var body: some View {
+        Form {
+            Section(L10n.languageSelection) {
+                Picker(L10n.language, selection: $languageManager.currentLanguage) {
+                    ForEach(AppLanguage.allCases) { lang in
+                        HStack {
+                            Text(lang.nativeDisplayName)
+                            if lang == .system {
+                                Spacer()
+                                Image(systemName: "gear")
+                                    .font(.caption)
+                                    .foregroundStyle(AppColors.textTertiary)
+                            }
+                        }
+                        .tag(lang)
+                    }
+                }
+                .pickerStyle(.radioGroup)
+
+                Text(L10n.languageNote)
+                    .font(AppTypography.caption)
+                    .foregroundStyle(AppColors.textTertiary)
+            }
+        }
+        .formStyle(.grouped)
     }
 }
 
