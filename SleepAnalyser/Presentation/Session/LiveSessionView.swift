@@ -5,13 +5,16 @@ struct LiveSessionView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        VStack(spacing: 0) {
-            if appState.isRecording {
-                recordingContent
-            } else {
-                idleContent
+        ScrollView {
+            VStack(spacing: 0) {
+                if appState.isRecording {
+                    recordingContent
+                } else {
+                    idleContent
+                }
+                actionButton
             }
-            actionButton
+            .frame(minWidth: 600, minHeight: 550)
         }
         .alert("Error", isPresented: .init(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK") { errorMessage = nil }

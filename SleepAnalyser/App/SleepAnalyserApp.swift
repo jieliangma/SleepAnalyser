@@ -9,12 +9,13 @@ struct SleepAnalyserApp: App {
         WindowGroup {
             DashboardView()
                 .preferredColorScheme(.dark)
-                .frame(minWidth: 900, minHeight: 650)
+                .frame(minWidth: 960, minHeight: 680)
                 .environment(languageManager)
                 .environment(appState)
                 .id(languageManager.effectiveLanguageCode)
         }
-        .defaultSize(width: 1100, height: 750)
+        .defaultSize(width: 1120, height: 780)
+        .windowResizability(.contentMinSize)
 
         MenuBarExtra(L10n.appName, systemImage: "moon.zzz.fill") {
             MenuBarView()

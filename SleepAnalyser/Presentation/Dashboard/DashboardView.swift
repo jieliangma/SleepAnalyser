@@ -38,7 +38,7 @@ struct DashboardView: View {
                 Label(item.title, systemImage: item.icon).tag(item)
             }
             .listStyle(.sidebar)
-            .frame(minWidth: 180)
+            .frame(minWidth: 180, maxWidth: 220)
         } detail: {
             Group {
                 switch selectedItem {
@@ -50,10 +50,10 @@ struct DashboardView: View {
                 case .settings: SettingsView()
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(minWidth: 700, maxWidth: .infinity, minHeight: 600, maxHeight: .infinity)
             .background(AppColors.background)
         }
-        .frame(minWidth: 900, minHeight: 650)
+        .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 220)
     }
 }
 

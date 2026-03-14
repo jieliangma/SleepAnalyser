@@ -22,7 +22,7 @@ struct CalibrationView: View {
             stepActions
         }
         .padding(AppSpacing.xl)
-        .frame(width: 480, height: 400)
+        .frame(minWidth: 480, minHeight: 400, maxHeight: 500)
     }
 
     private var stepIndicator: some View {
