@@ -26,5 +26,7 @@
 	<string>SleepAnalyser needs microphone access to analyze your breathing patterns during sleep.</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.healthcare-fitness</string>
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
 </dict>
 </plist>
