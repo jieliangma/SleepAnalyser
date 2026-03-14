@@ -2,6 +2,8 @@ import SwiftUI
 
 struct MenuBarView: View {
     @Environment(AppState.self) private var appState
+    @State private var focusedIndex: Int = 0
+    private let actionCount = 2
 
     var body: some View {
         VStack(spacing: 0) {
@@ -14,6 +16,21 @@ struct MenuBarView: View {
         .fixedSize(horizontal: true, vertical: true)
         .frame(minWidth: 200)
         .background(Color(nsColor: .windowBackgroundColor))
+        .onKeyPress(.upArrow) { moveFocus(-1); return .handled }
+        .onKeyPress(.downArrow) { moveFocus(1); return .handled }
+        .onKeyPress(.return) { executeAction(focusedIndex); return .handled }
+    }
+
+    private func moveFocus(_ delta: Int) {
+        focusedIndex = (focusedIndex + delta + actionCount) % actionCount
+    }
+
+    private func executeAction(_ index: Int) {
+        switch index {
+        case 0: toggleSession()
+        case 1: quitApp()
+        default: break
+        }
     }
 
     private var header: some View {
@@ -65,15 +82,11 @@ struct MenuBarView: View {
                             .foregroundStyle(AppColors.textTertiary)
                     }
                 }
-
                 miniAmplitudeBar
             } else {
                 HStack {
-                    Image(systemName: "moon.fill")
-                        .foregroundStyle(AppColors.textTertiary)
-                    Text(L10n.notTracking)
-                        .font(.system(size: 13))
-                        .foregroundStyle(AppColors.textSecondary)
+                    Image(systemName: "moon.fill").foregroundStyle(AppColors.textTertiary)
+                    Text(L10n.notTracking).font(.system(size: 13)).foregroundStyle(AppColors.textSecondary)
                     Spacer()
                 }
             }
@@ -85,8 +98,7 @@ struct MenuBarView: View {
     private var miniAmplitudeBar: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(AppColors.surfaceLight)
+                RoundedRectangle(cornerRadius: 2).fill(AppColors.surfaceLight)
                 RoundedRectangle(cornerRadius: 2)
                     .fill(AppColors.primary.opacity(0.7))
                     .frame(width: geo.size.width * min(1, appState.currentAmplitude * 8))
@@ -97,53 +109,64 @@ struct MenuBarView: View {
     }
 
     private var actionsSection: some View {
-        VStack(spacing: 2) {
-            Button {
-                dismissPopover()
-                Task {
-                    if appState.isRecording { try? await appState.stopSession() }
-                    else { try? await appState.startSession() }
-                }
-            } label: {
-                HStack {
-                    Image(systemName: appState.isRecording ? "stop.fill" : "play.fill")
-                        .frame(width: 16)
-                    Text(appState.isRecording ? L10n.stop : L10n.startTrackingShort)
-                    Spacer()
-                    if !appState.isRecording {
-                        Text("⌘S").font(.system(size: 11)).foregroundStyle(AppColors.textTertiary)
-                    }
-                }
-                .font(.system(size: 13))
-                .padding(.horizontal, AppSpacing.md).padding(.vertical, 8)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .background(Color.clear)
-            .onHover { inside in /* hover handled by system */ }
+        VStack(spacing: 0) {
+            menuRow(
+                icon: appState.isRecording ? "stop.fill" : "play.fill",
+                title: appState.isRecording ? L10n.stop : L10n.startTrackingShort,
+                shortcut: "⌘S",
+                isFocused: focusedIndex == 0,
+                action: toggleSession
+            )
 
-            Divider().padding(.horizontal, AppSpacing.md)
-
-            Button {
-                dismissPopover()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    NSApplication.shared.terminate(nil)
-                }
-            } label: {
-                HStack {
-                    Image(systemName: "power").frame(width: 16)
-                    Text(L10n.quit)
-                    Spacer()
-                    Text("⌘Q").font(.system(size: 11)).foregroundStyle(AppColors.textTertiary)
-                }
-                .font(.system(size: 13))
-                .foregroundStyle(AppColors.textSecondary)
-                .padding(.horizontal, AppSpacing.md).padding(.vertical, 8)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+            menuRow(
+                icon: "power",
+                title: L10n.quit,
+                shortcut: "⌘Q",
+                isFocused: focusedIndex == 1,
+                action: quitApp
+            )
         }
         .padding(.vertical, 4)
+    }
+
+    private func menuRow(icon: String, title: String, shortcut: String, isFocused: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Image(systemName: icon).frame(width: 16)
+                Text(title)
+                Spacer()
+                Text(shortcut).font(.system(size: 11)).foregroundStyle(isFocused ? .white.opacity(0.7) : AppColors.textTertiary)
+            }
+            .font(.system(size: 13))
+            .foregroundStyle(isFocused ? .white : AppColors.textPrimary)
+            .padding(.horizontal, AppSpacing.md).padding(.vertical, 7)
+            .background(isFocused ? AppColors.primary : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .padding(.horizontal, 5)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            if hovering {
+                if title == L10n.quit { focusedIndex = 1 }
+                else { focusedIndex = 0 }
+            }
+        }
+    }
+
+    private func toggleSession() {
+        dismissPopover()
+        Task {
+            if appState.isRecording { try? await appState.stopSession() }
+            else { try? await appState.startSession() }
+        }
+    }
+
+    private func quitApp() {
+        dismissPopover()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            NSApplication.shared.terminate(nil)
+        }
     }
 
     private func dismissPopover() {
