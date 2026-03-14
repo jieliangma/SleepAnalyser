@@ -111,6 +111,9 @@ app_res_phase = sid("app_res_phase")
 dep_id = sid("target_dep")
 dep_proxy = sid("dep_proxy")
 
+xcassets_fid = sid("fr_Assets.xcassets")
+xcassets_bf = sid("bf_Assets.xcassets")
+
 app_swift = [p for p in obj.file_refs if p.startswith("SleepAnalyser/") and p.endswith(".swift")]
 app_plist = [p for p in obj.file_refs if p.startswith("SleepAnalyser/") and p.endswith(".plist")]
 test_swift = [p for p in obj.file_refs if p.startswith("SleepAnalyserTests/") and p.endswith(".swift")]
@@ -137,6 +140,7 @@ w("/* Begin PBXBuildFile section */")
 for key, (bid, fid) in sorted(obj.build_files.items()):
     fname = os.path.basename(key.split("_", 1)[1])
     w(f"\t\t{bid} = {{isa = PBXBuildFile; fileRef = {fid}; }};")
+w(f"\t\t{xcassets_bf} = {{isa = PBXBuildFile; fileRef = {xcassets_fid}; }};")
 w("/* End PBXBuildFile section */")
 w()
 
@@ -158,6 +162,7 @@ w(f"\t\t{info_plist_fid} = {{isa = PBXFileReference; lastKnownFileType = text.pl
 for rel_path, (fid, ftype) in sorted(obj.file_refs.items()):
     fname = os.path.basename(rel_path)
     w(f"\t\t{fid} = {{isa = PBXFileReference; lastKnownFileType = {ftype}; path = \"{fname}\"; sourceTree = \"<group>\"; }};")
+w(f"\t\t{xcassets_fid} = {{isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = \"<group>\"; }};")
 w("/* End PBXFileReference section */")
 w()
 
@@ -192,6 +197,9 @@ for rel_dir in sorted(obj.groups.keys()):
             ordered_ids.append(sid("grp_" + path))
         else:
             ordered_ids.append(obj.file_refs[path][0])
+    
+    if rel_dir == os.path.join("SleepAnalyser", "Resources"):
+        ordered_ids.append(xcassets_fid)
     
     children = ", ".join(ordered_ids) if len(ordered_ids) <= 3 else ",\n".join(f"\t\t\t\t{c}" for c in ordered_ids)
     
@@ -260,6 +268,7 @@ w(f"\t\t{app_res_phase} = {{")
 w(f"\t\t\tisa = PBXResourcesBuildPhase;")
 w(f"\t\t\tbuildActionMask = 2147483647;")
 res_bids = [obj.build_files["app_res_" + f][0] for f in app_plist]
+res_bids.append(xcassets_bf)
 w(f"\t\t\tfiles = ({', '.join(res_bids)});")
 w(f"\t\t\trunOnlyForDeploymentPostprocessing = 0;")
 w(f"\t\t}};")
@@ -321,6 +330,7 @@ app_extra = """				PRODUCT_BUNDLE_IDENTIFIER = com.sleepanalyser.app;
 				COMBINE_HIDPI_IMAGES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "SleepAnalyser needs microphone access to analyze your breathing patterns during sleep.";
 				INFOPLIST_KEY_NSMainStoryboardFile = "";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";"""

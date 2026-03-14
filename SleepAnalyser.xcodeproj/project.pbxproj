@@ -122,6 +122,7 @@
 		8B100A4A6A08AE76750AB747 = {isa = PBXBuildFile; fileRef = 0554A5A297880D5CCC5B048F; };
 		4B9A6C5A8DA86D173B211F37 = {isa = PBXBuildFile; fileRef = 7F6B93D8C15088CF24A876D2; };
 		06076A6DB9050C11EDF635D3 = {isa = PBXBuildFile; fileRef = 0E44E6696464499369DF7AFC; };
+		30871166680E52097765E99E = {isa = PBXBuildFile; fileRef = DA1C88A5832AA6AB8F1093D4; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -254,6 +255,7 @@
 		0554A5A297880D5CCC5B048F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MockProfileRepository.swift"; sourceTree = "<group>"; };
 		7F6B93D8C15088CF24A876D2 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MockSessionRepository.swift"; sourceTree = "<group>"; };
 		0E44E6696464499369DF7AFC = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TestAudioFixtures.swift"; sourceTree = "<group>"; };
+		DA1C88A5832AA6AB8F1093D4 = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -587,7 +589,7 @@
 		};
 		15782DF1C262C35606101434 = {
 			isa = PBXGroup;
-			children = (7D716C01A04035AFBC342DE2);
+			children = (7D716C01A04035AFBC342DE2, DA1C88A5832AA6AB8F1093D4);
 			path = "Resources";
 			sourceTree = "<group>";
 		};
@@ -715,7 +717,7 @@
 		57135DEEBA5CEFA8CA053F0B = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (D634FB1F07406661AEA24569);
+			files = (D634FB1F07406661AEA24569, 30871166680E52097765E99E);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
@@ -895,6 +897,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "SleepAnalyser needs microphone access to analyze your breathing patterns during sleep.";
 				INFOPLIST_KEY_NSMainStoryboardFile = "";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
@@ -910,6 +913,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "SleepAnalyser needs microphone access to analyze your breathing patterns during sleep.";
 				INFOPLIST_KEY_NSMainStoryboardFile = "";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
