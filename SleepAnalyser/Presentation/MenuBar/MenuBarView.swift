@@ -1,8 +1,7 @@
 import SwiftUI
 
 struct MenuBarView: View {
-    @State private var isRecording = false
-    @State private var elapsed: TimeInterval = 0
+    @Environment(AppState.self) private var appState
 
     var body: some View {
         VStack(spacing: AppSpacing.md) {
@@ -11,23 +10,41 @@ struct MenuBarView: View {
                 Text(L10n.appName).font(AppTypography.headline).foregroundStyle(AppColors.textPrimary)
                 Spacer()
             }
-            if isRecording {
+            if appState.isRecording {
                 HStack {
                     Circle().fill(AppColors.success).frame(width: 8, height: 8)
                     Text(L10n.recording).font(AppTypography.caption).foregroundStyle(AppColors.success)
                     Spacer()
-                    Text(DurationFormatter.format(elapsed)).font(AppTypography.metricValue).foregroundStyle(AppColors.textPrimary)
+                    Text(DurationFormatter.format(appState.elapsedTime)).font(AppTypography.metricValue).foregroundStyle(AppColors.textPrimary)
+                }
+                HStack {
+                    Image(systemName: appState.currentStage.sfSymbolName)
+                        .foregroundStyle(AppColors.stageColor(appState.currentStage))
+                    Text(appState.currentStage.displayName)
+                        .font(AppTypography.caption).foregroundStyle(AppColors.textSecondary)
+                    Spacer()
+                    if appState.currentBreathingRate > 0 {
+                        Text(L10n.bpmFormat(String(format: "%.0f", appState.currentBreathingRate)))
+                            .font(AppTypography.caption).foregroundStyle(AppColors.textSecondary)
+                    }
                 }
             } else {
                 Text(L10n.notTracking).font(AppTypography.body).foregroundStyle(AppColors.textSecondary)
             }
             Divider()
-            Button(action: { isRecording.toggle() }) {
-                Label(isRecording ? L10n.stop : L10n.startTrackingShort, systemImage: isRecording ? "stop.fill" : "play.fill")
+            Button {
+                Task {
+                    if appState.isRecording {
+                        try? await appState.stopSession()
+                    } else {
+                        try? await appState.startSession()
+                    }
+                }
+            } label: {
+                Label(appState.isRecording ? L10n.stop : L10n.startTrackingShort, systemImage: appState.isRecording ? "stop.fill" : "play.fill")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent).tint(isRecording ? AppColors.error : AppColors.primary)
-            Button(L10n.openDashboard) {}.buttonStyle(.bordered)
+            .buttonStyle(.borderedProminent).tint(appState.isRecording ? AppColors.error : AppColors.primary)
         }
         .padding(AppSpacing.md).frame(width: 280)
     }

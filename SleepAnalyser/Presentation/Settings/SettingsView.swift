@@ -24,10 +24,7 @@ struct LanguageSettingsTab: View {
                     }
                 }
                 .pickerStyle(.menu)
-
-                Text(L10n.languageNote)
-                    .font(AppTypography.caption)
-                    .foregroundStyle(AppColors.textTertiary)
+                Text(L10n.languageNote).font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
             }
         }
         .formStyle(.grouped)
@@ -35,33 +32,79 @@ struct LanguageSettingsTab: View {
 }
 
 struct AudioSettingsTab: View {
-    @State private var selectedDevice = "Default"
+    @Environment(AppState.self) private var appState
+    @State private var selectedDeviceUID: String = ""
     @State private var sensitivity: Double = 1.0
 
     var body: some View {
         Form {
             Section(L10n.audioInput) {
-                Picker(L10n.microphone, selection: $selectedDevice) {
-                    Text(L10n.defaultMicrophone).tag("Default")
+                Picker(L10n.microphone, selection: $selectedDeviceUID) {
+                    ForEach(appState.deviceManager.availableDevices, id: \.id) { device in
+                        Text(device.name).tag(device.id)
+                    }
+                    if appState.deviceManager.availableDevices.isEmpty {
+                        Text(L10n.defaultMicrophone).tag("")
+                    }
                 }
+                .onChange(of: selectedDeviceUID) { _, newUID in
+                    guard !newUID.isEmpty, let profile = appState.activeProfile else { return }
+                    Task {
+                        try? await appState.captureService.switchDevice(uid: newUID)
+                        var updated = profile
+                        updated.preferredInputDeviceUID = newUID
+                        try? await appState.profileRepo.updateProfile(updated)
+                        appState.activeProfile = updated
+                    }
+                }
+
                 Slider(value: $sensitivity, in: 0.5...2.0) { Text(L10n.sensitivity) }
-                Button(L10n.calibrateRoom) {}
+
+                HStack {
+                    Circle()
+                        .fill(appState.micPermissionGranted ? AppColors.success : AppColors.error)
+                        .frame(width: 8, height: 8)
+                    Text(appState.micPermissionGranted ? L10n.signalGood : "No Permission")
+                        .font(AppTypography.caption)
+                }
+
+                if !appState.micPermissionGranted {
+                    Button("Grant Microphone Access") {
+                        Task { await appState.requestMicPermission() }
+                    }
+                }
             }
         }
         .formStyle(.grouped)
+        .onAppear {
+            selectedDeviceUID = appState.activeProfile?.preferredInputDeviceUID ?? appState.deviceManager.availableDevices.first?.id ?? ""
+        }
     }
 }
 
 struct PrivacySettingsTab: View {
+    @Environment(AppState.self) private var appState
+    @State private var showDeleteConfirm = false
+
     var body: some View {
         Form {
             Section(L10n.data) {
                 Text(L10n.privacyNote).foregroundStyle(AppColors.textSecondary)
-                Button(L10n.exportData) {}
-                Button(L10n.deleteAllData, role: .destructive) {}
+                Button(L10n.deleteAllData, role: .destructive) { showDeleteConfirm = true }
             }
         }
         .formStyle(.grouped)
+        .alert(L10n.deleteAllData, isPresented: $showDeleteConfirm) {
+            Button(L10n.deleteAllData, role: .destructive) {
+                Task {
+                    let sessions = (try? await appState.sessionRepo.getSessions(
+                        from: Date.distantPast, to: Date.distantFuture
+                    )) ?? []
+                    for s in sessions { try? await appState.sessionRepo.deleteSession(id: s.id) }
+                }
+            }
+            Button(L10n.stop, role: .cancel) {}
+        }
     }
 }
 

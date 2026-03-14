@@ -4,6 +4,11 @@ import XCTest
 final class InsightEngineTests: XCTestCase {
     let sut = InsightEngine()
 
+    override func setUp() {
+        super.setUp()
+        LanguageManager.shared.currentLanguage = .en
+    }
+
     func test_lowDeepSleep_generatesInsight() {
         let session = makeSession(deepPercent: 0.05)
         let score = SleepScore(overall: 70, durationScore: 80, efficiencyScore: 80, stageBalanceScore: 50, disturbanceScore: 80)

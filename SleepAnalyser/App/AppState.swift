@@ -1,0 +1,181 @@
+import Foundation
+import Observation
+import AVFoundation
+
+@Observable
+final class AppState {
+    static let shared = AppState()
+
+    let persistence: PersistenceController
+    let deviceManager: AVAudioInputDeviceManager
+    let captureService: AVAudioCaptureService
+    let pipeline: AudioPipelineCoordinator
+    let inferenceEngine: SleepStageInferenceEngine
+    let postProcessor: HMMPostProcessor
+    let cycleConstraints: SleepCycleConstraintEngine
+    let scoreCalculator: SleepScoreCalculator
+    let reportGenerator: MorningReportGenerator
+    let trendAggregator: TrendAggregator
+    let sessionRepo: SessionRepository
+    let profileRepo: ProfileRepository
+
+    var activeSession: SleepSession?
+    var activeProfile: UserProfile?
+    var currentStage: SleepStage = .unknown
+    var currentBreathingRate: Double = 0
+    var currentNoiseLevel: Double = -100
+    var epochHistory: [SleepEpoch] = []
+    var sessionEvents: [AudioEvent] = []
+    var elapsedTime: TimeInterval = 0
+    var isRecording: Bool { activeSession?.state == .recording }
+    var micPermissionGranted = false
+
+    private var recordingTask: Task<Void, Never>?
+    private var timerTask: Task<Void, Never>?
+
+    private init() {
+        self.persistence = PersistenceController.shared
+        self.deviceManager = AVAudioInputDeviceManager()
+        self.captureService = AVAudioCaptureService(deviceManager: deviceManager)
+        self.pipeline = AudioPipelineCoordinator()
+        self.inferenceEngine = SleepStageInferenceEngine()
+        self.postProcessor = HMMPostProcessor()
+        self.cycleConstraints = SleepCycleConstraintEngine()
+        self.scoreCalculator = SleepScoreCalculator()
+        self.reportGenerator = MorningReportGenerator()
+        self.trendAggregator = TrendAggregator()
+        self.sessionRepo = SessionRepository(persistence: persistence)
+        self.profileRepo = ProfileRepository(persistence: persistence)
+
+        Task { await loadActiveProfile() }
+        checkMicPermission()
+    }
+
+    private func checkMicPermission() {
+        let status = AVCaptureDevice.authorizationStatus(for: .audio)
+        micPermissionGranted = status == .authorized
+    }
+
+    func requestMicPermission() async {
+        let granted = await AVCaptureDevice.requestAccess(for: .audio)
+        await MainActor.run { micPermissionGranted = granted }
+    }
+
+    func loadActiveProfile() async {
+        if let profile = try? await profileRepo.getDefaultProfile() {
+            await MainActor.run { activeProfile = profile }
+        } else {
+            let newProfile = UserProfile(name: L10n.defaultUser)
+            try? await profileRepo.createProfile(newProfile)
+            await MainActor.run { activeProfile = newProfile }
+        }
+    }
+
+    func startSession() async throws {
+        guard let profile = activeProfile else { return }
+        guard !isRecording else { return }
+
+        if !micPermissionGranted {
+            await requestMicPermission()
+            guard micPermissionGranted else { throw AudioCaptureError.permissionDenied }
+        }
+
+        let session = SleepSession(profileId: profile.id, startAt: Date(), state: .recording)
+        try await sessionRepo.createSession(session)
+        await MainActor.run {
+            activeSession = session
+            epochHistory = []
+            sessionEvents = []
+            currentStage = .unknown
+            currentBreathingRate = 0
+            elapsedTime = 0
+        }
+
+        try await captureService.startCapture()
+        let outputStream = pipeline.makeOutputStream()
+
+        startTimer()
+
+        recordingTask = Task { [weak self] in
+            guard let self else { return }
+            let audioStream = self.captureService.audioStream
+            Task {
+                for await frame in audioStream {
+                    guard let session = self.activeSession, session.state == .recording else { break }
+                    self.pipeline.processFrame(frame, sessionId: session.id)
+                }
+            }
+            for await output in outputStream {
+                guard let session = self.activeSession, session.state == .recording else { break }
+                await self.processOutput(output, session: session)
+            }
+        }
+    }
+
+    func stopSession() async throws {
+        recordingTask?.cancel()
+        recordingTask = nil
+        timerTask?.cancel()
+        timerTask = nil
+        captureService.stopCapture()
+        pipeline.reset()
+
+        guard var session = activeSession else { return }
+        session.state = .stopped
+        session.endAt = Date()
+        session.epochs = epochHistory
+        session.events = sessionEvents
+        try await sessionRepo.updateSession(session)
+        await MainActor.run {
+            activeSession = session
+        }
+    }
+
+    @MainActor
+    private func processOutput(_ output: PipelineOutput, session: SleepSession) async {
+        let prediction = inferenceEngine.predict(features: output.features, context: output.contextFlags)
+        let smoothed = postProcessor.smooth(prediction: prediction, history: epochHistory)
+
+        let epoch = SleepEpoch(
+            sessionId: session.id,
+            timestamp: output.timestamp,
+            predictedStage: smoothed,
+            confidence: prediction.confidence,
+            respirationRate: output.breathingSample.breathsPerMinute,
+            snoreIntensity: 0,
+            contextFlags: output.contextFlags
+        )
+
+        epochHistory.append(epoch)
+        currentStage = smoothed
+        currentBreathingRate = output.breathingSample.breathsPerMinute
+        currentNoiseLevel = Double(output.features.rmsEnergy)
+
+        for event in output.events {
+            sessionEvents.append(event)
+            try? await sessionRepo.addEvent(event, toSession: session.id)
+        }
+
+        try? await sessionRepo.addEpoch(epoch, toSession: session.id)
+    }
+
+    private func startTimer() {
+        timerTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard let self, let session = self.activeSession, session.state == .recording else { break }
+                await MainActor.run {
+                    self.elapsedTime = Date().timeIntervalSince(session.startAt)
+                }
+            }
+        }
+    }
+
+    func generateReport() -> MorningReport? {
+        guard let session = activeSession, session.state == .stopped else { return nil }
+        var s = session
+        s.epochs = epochHistory
+        s.events = sessionEvents
+        return reportGenerator.generateMorningReport(session: s)
+    }
+}
