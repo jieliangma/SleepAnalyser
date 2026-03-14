@@ -35,6 +35,7 @@ struct AudioSettingsTab: View {
     @Environment(AppState.self) private var appState
     @State private var selectedDeviceUID: String = ""
     @State private var sensitivity: Double = 1.0
+    @State private var showCalibration = false
 
     var body: some View {
         Form {
@@ -74,10 +75,44 @@ struct AudioSettingsTab: View {
                     }
                 }
             }
+
+            Section(L10n.calibrateRoom) {
+                if let cal = appState.calibration {
+                    HStack {
+                        Text(L10n.calibrationNoiseFloor).foregroundStyle(AppColors.textSecondary)
+                        Spacer()
+                        Text(String(format: "%.1f dB", cal.baselineNoiseLevel)).foregroundStyle(AppColors.textPrimary)
+                    }
+                    .font(AppTypography.body)
+                    HStack {
+                        Text(L10n.calibrationGain).foregroundStyle(AppColors.textSecondary)
+                        Spacer()
+                        Text(String(format: "%.2fx", cal.micGainFactor)).foregroundStyle(AppColors.textPrimary)
+                    }
+                    .font(AppTypography.body)
+                    HStack {
+                        Text(L10n.calibrationLastDate).foregroundStyle(AppColors.textSecondary)
+                        Spacer()
+                        Text(cal.lastCalibratedAt, style: .relative).foregroundStyle(AppColors.textTertiary)
+                    }
+                    .font(AppTypography.caption)
+                } else {
+                    Text(L10n.calibrationNone).foregroundStyle(AppColors.textTertiary).font(AppTypography.caption)
+                }
+                Button(appState.calibration == nil ? L10n.calibrationStart : L10n.calibrationRecalibrate) {
+                    showCalibration = true
+                }
+            }
         }
         .formStyle(.grouped)
         .onAppear {
             selectedDeviceUID = appState.activeProfile?.preferredInputDeviceUID ?? appState.deviceManager.availableDevices.first?.id ?? ""
+            if let profileId = appState.activeProfile?.id {
+                Task { appState.calibration = try? await appState.profileRepo.getCalibration(profileId: profileId) }
+            }
+        }
+        .sheet(isPresented: $showCalibration) {
+            CalibrationView()
         }
     }
 }

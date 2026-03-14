@@ -29,6 +29,9 @@ final class AppState {
     var elapsedTime: TimeInterval = 0
     var isRecording: Bool { activeSession?.state == .recording }
     var micPermissionGranted = false
+    var calibration: AcousticCalibration?
+    var currentAmplitude: Double = 0
+    var breathCount: Int = 0
 
     private var recordingTask: Task<Void, Never>?
     private var timerTask: Task<Void, Never>?
@@ -89,6 +92,7 @@ final class AppState {
             currentStage = .unknown
             currentBreathingRate = 0
             elapsedTime = 0
+            breathCount = 0
         }
 
         try await captureService.startCapture()
@@ -150,6 +154,10 @@ final class AppState {
         currentStage = smoothed
         currentBreathingRate = output.breathingSample.breathsPerMinute
         currentNoiseLevel = Double(output.features.rmsEnergy)
+        currentAmplitude = output.breathingSample.amplitude
+        if output.breathingSample.breathsPerMinute > 0 {
+            breathCount += Int(output.breathingSample.breathsPerMinute * 30.0 / 60.0)
+        }
 
         for event in output.events {
             sessionEvents.append(event)

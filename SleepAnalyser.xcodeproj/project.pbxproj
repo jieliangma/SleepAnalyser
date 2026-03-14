@@ -94,7 +94,9 @@
 		4125710DCF44C2B0893D80DE = {isa = PBXBuildFile; fileRef = E9FB4EA52D13803E104FF848; };
 		E75D839B0A4ED5713094E702 = {isa = PBXBuildFile; fileRef = 45B6EF68CD2065F2730422D0; };
 		A431967D61C1F08546AAA4F0 = {isa = PBXBuildFile; fileRef = E35AE04E9F765B44838133D1; };
+		C4240F4ED4165D058B08E2C4 = {isa = PBXBuildFile; fileRef = 6015DF7BE19D56EC487BAEE7; };
 		80E89BE1D310BBF6E2342E0C = {isa = PBXBuildFile; fileRef = 22EADE926DF4B91BA6A1DCBC; };
+		EB312833880C6946FA71EEDD = {isa = PBXBuildFile; fileRef = 8B1722E2995E252ECB9FA1D5; };
 		AE281054F2CC8BC0E5EF7A50 = {isa = PBXBuildFile; fileRef = 55278917623E661BC94B755E; };
 		3DB4A7D6A08324EBF80DAD36 = {isa = PBXBuildFile; fileRef = 3BCCAF7929D4AC2E9EB0EE41; };
 		EE7210DC1805F6C0872BC939 = {isa = PBXBuildFile; fileRef = 0727989814C08F552766FCE5; };
@@ -229,7 +231,9 @@
 		E9FB4EA52D13803E104FF848 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningReportView.swift"; sourceTree = "<group>"; };
 		45B6EF68CD2065F2730422D0 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TrendsView.swift"; sourceTree = "<group>"; };
 		E35AE04E9F765B44838133D1 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LiveSessionView.swift"; sourceTree = "<group>"; };
+		6015DF7BE19D56EC487BAEE7 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CalibrationView.swift"; sourceTree = "<group>"; };
 		22EADE926DF4B91BA6A1DCBC = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsView.swift"; sourceTree = "<group>"; };
+		8B1722E2995E252ECB9FA1D5 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BreathingWaveView.swift"; sourceTree = "<group>"; };
 		55278917623E661BC94B755E = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ConfidenceBadgeView.swift"; sourceTree = "<group>"; };
 		3BCCAF7929D4AC2E9EB0EE41 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EventTimelineView.swift"; sourceTree = "<group>"; };
 		0727989814C08F552766FCE5 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HypnogramChartView.swift"; sourceTree = "<group>"; };
@@ -560,7 +564,7 @@
 		};
 		D7D794053EDEF1F6F824E4F6 = {
 			isa = PBXGroup;
-			children = (22EADE926DF4B91BA6A1DCBC);
+			children = (6015DF7BE19D56EC487BAEE7, 22EADE926DF4B91BA6A1DCBC);
 			path = "Settings";
 			sourceTree = "<group>";
 		};
@@ -573,6 +577,7 @@
 		522F285C1EE533B05744DDDA = {
 			isa = PBXGroup;
 			children = (
+				8B1722E2995E252ECB9FA1D5,
 				55278917623E661BC94B755E,
 				3BCCAF7929D4AC2E9EB0EE41,
 				0727989814C08F552766FCE5,
@@ -855,7 +860,9 @@
 				4125710DCF44C2B0893D80DE,
 				E75D839B0A4ED5713094E702,
 				A431967D61C1F08546AAA4F0,
+				C4240F4ED4165D058B08E2C4,
 				80E89BE1D310BBF6E2342E0C,
+				EB312833880C6946FA71EEDD,
 				AE281054F2CC8BC0E5EF7A50,
 				3DB4A7D6A08324EBF80DAD36,
 				EE7210DC1805F6C0872BC939,

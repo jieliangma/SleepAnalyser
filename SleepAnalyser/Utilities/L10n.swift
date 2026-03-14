@@ -69,6 +69,24 @@ enum L10n {
     static var microphone: String { s("settings.microphone") }
     static var sensitivity: String { s("settings.sensitivity") }
     static var calibrateRoom: String { s("settings.calibrateRoom") }
+    static var calibrationIntro: String { s("calibration.intro") }
+    static var calibrationRecording: String { s("calibration.recording") }
+    static var calibrationKeepQuiet: String { s("calibration.keepQuiet") }
+    static var calibrationAnalyzing: String { s("calibration.analyzing") }
+    static var calibrationDone: String { s("calibration.done") }
+    static var calibrationNoiseFloor: String { s("calibration.noiseFloor") }
+    static var calibrationGain: String { s("calibration.gain") }
+    static var calibrationQuiet: String { s("calibration.quiet") }
+    static var calibrationModerate: String { s("calibration.moderate") }
+    static var calibrationLoud: String { s("calibration.loud") }
+    static var calibrationStart: String { s("calibration.start") }
+    static var calibrationFinish: String { s("calibration.finish") }
+    static var calibrationRetry: String { s("calibration.retry") }
+    static var calibrationRecalibrate: String { s("calibration.recalibrate") }
+    static var calibrationNone: String { s("calibration.none") }
+    static var calibrationLastDate: String { s("calibration.lastDate") }
+    static var noiseLevel: String { s("metric.noiseLevel") }
+    static var breathCount: String { s("metric.breathCount") }
     static var data: String { s("settings.data") }
     static var privacyNote: String { s("settings.privacyNote") }
     static var exportData: String { s("settings.exportData") }
