@@ -14,8 +14,8 @@ struct SettingsView: View {
 
     private var settingsTabs: some View {
         HStack(spacing: AppSpacing.xs) {
-            tabButton(L10n.language, icon: "globe", tag: 0)
-            tabButton(L10n.audio, icon: "mic.fill", tag: 1)
+            tabButton(L10n.audio, icon: "mic.fill", tag: 0)
+            tabButton(L10n.language, icon: "globe", tag: 1)
             tabButton(L10n.privacy, icon: "lock.fill", tag: 2)
             tabButton(L10n.about, icon: "info.circle.fill", tag: 3)
         }
@@ -46,8 +46,8 @@ private struct TabContent: View {
         ScrollView {
             VStack(spacing: AppSpacing.lg) {
                 switch selectedTab {
-                case 0: LanguageSection()
-                case 1: AudioSection()
+                case 0: AudioSection()
+                case 1: LanguageSection()
                 case 2: PrivacySection()
                 case 3: AboutSection()
                 default: EmptyView()
