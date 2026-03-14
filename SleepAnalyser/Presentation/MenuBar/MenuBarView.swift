@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MenuBarView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.dismissWindow) private var dismissWindow
 
     var body: some View {
         VStack(spacing: AppSpacing.md) {
@@ -33,6 +34,7 @@ struct MenuBarView: View {
             }
             Divider()
             Button {
+                dismissPopover()
                 Task {
                     if appState.isRecording {
                         try? await appState.stopSession()
@@ -47,7 +49,10 @@ struct MenuBarView: View {
             .buttonStyle(.borderedProminent).tint(appState.isRecording ? AppColors.error : AppColors.primary)
             Divider()
             Button(role: .destructive) {
-                NSApplication.shared.terminate(nil)
+                dismissPopover()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    NSApplication.shared.terminate(nil)
+                }
             } label: {
                 Label(L10n.quit, systemImage: "power")
                     .frame(maxWidth: .infinity)
@@ -55,5 +60,9 @@ struct MenuBarView: View {
             .buttonStyle(.bordered)
         }
         .padding(AppSpacing.md).frame(width: 280)
+    }
+
+    private func dismissPopover() {
+        NSApp.keyWindow?.close()
     }
 }
