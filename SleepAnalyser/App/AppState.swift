@@ -69,7 +69,8 @@ final class AppState {
         if let profile = try? await profileRepo.getDefaultProfile() {
             await MainActor.run { activeProfile = profile }
         } else {
-            let newProfile = UserProfile(name: L10n.defaultUser)
+            let name = NSFullUserName().isEmpty ? NSUserName() : NSFullUserName()
+            let newProfile = UserProfile(name: name)
             try? await profileRepo.createProfile(newProfile)
             await MainActor.run { activeProfile = newProfile }
         }
