@@ -1,4 +1,5 @@
 import Foundation
+import Accelerate
 
 struct PipelineOutput: Sendable {
     let timestamp: Date
@@ -6,6 +7,12 @@ struct PipelineOutput: Sendable {
     let breathingSample: BreathingSample
     let events: [AudioEvent]
     let contextFlags: [String]
+}
+
+struct RealtimeAudioFrame: Sendable {
+    let rmsLevel: Float
+    let noiseDB: Double
+    let isBreathPeak: Bool
 }
 
 final class AudioPipelineCoordinator: @unchecked Sendable {
@@ -25,6 +32,13 @@ final class AudioPipelineCoordinator: @unchecked Sendable {
     private var lastSnoreEventEnd: Date?
     private var baselineRMS: Float = 0.01
     private var continuation: AsyncStream<PipelineOutput>.Continuation?
+    private var realtimeContinuation: AsyncStream<RealtimeAudioFrame>.Continuation?
+
+    private var envelopeHistory: [Float] = []
+    private let envelopeWindowSize = 8
+    private var prevEnvelopeRising = false
+    private var peakCooldown: Int = 0
+    private let peakCooldownFrames = 20
 
     init(preprocessor: AudioPreprocessor = AudioPreprocessor(),
          noiseSuppressor: NoiseSuppressor = NoiseSuppressor(),
@@ -52,6 +66,12 @@ final class AudioPipelineCoordinator: @unchecked Sendable {
         }
     }
 
+    func makeRealtimeStream() -> AsyncStream<RealtimeAudioFrame> {
+        AsyncStream { [weak self] continuation in
+            self?.realtimeContinuation = continuation
+        }
+    }
+
     func processFrame(_ frame: AudioFrame, sessionId: UUID) {
         let start = CFAbsoluteTimeGetCurrent()
 
@@ -59,6 +79,19 @@ final class AudioPipelineCoordinator: @unchecked Sendable {
 
         let processed = preprocessor.process(frame: frame)
         let suppressed = noiseSuppressor.suppress(processed.samples)
+
+        var rms: Float = 0
+        if !suppressed.isEmpty {
+            vDSP_rmsqv(suppressed, 1, &rms, vDSP_Length(suppressed.count))
+        }
+
+        let isBreathPeak = detectBreathPeak(rms: rms)
+
+        realtimeContinuation?.yield(RealtimeAudioFrame(
+            rmsLevel: rms,
+            noiseDB: processed.noiseLevel,
+            isBreathPeak: isBreathPeak
+        ))
 
         let processedForFeatures = ProcessedFrame(
             timestamp: processed.timestamp,
@@ -127,11 +160,45 @@ final class AudioPipelineCoordinator: @unchecked Sendable {
         metrics.recordLatency(elapsed)
     }
 
+    private func detectBreathPeak(rms: Float) -> Bool {
+        envelopeHistory.append(rms)
+        if envelopeHistory.count > envelopeWindowSize * 3 {
+            envelopeHistory.removeFirst(envelopeHistory.count - envelopeWindowSize * 3)
+        }
+
+        if peakCooldown > 0 {
+            peakCooldown -= 1
+            return false
+        }
+
+        guard envelopeHistory.count >= envelopeWindowSize else { return false }
+
+        let recent = Array(envelopeHistory.suffix(envelopeWindowSize))
+        let smoothed = recent.reduce(0, +) / Float(recent.count)
+        let older = envelopeHistory.count >= envelopeWindowSize * 2
+            ? Array(envelopeHistory.suffix(envelopeWindowSize * 2).prefix(envelopeWindowSize))
+            : recent
+        let prevSmoothed = older.reduce(0, +) / Float(older.count)
+
+        let isRising = smoothed > prevSmoothed
+        let isPeak = !isRising && prevEnvelopeRising && smoothed > baselineRMS * 1.5
+        prevEnvelopeRising = isRising
+
+        if isPeak {
+            peakCooldown = peakCooldownFrames
+            return true
+        }
+        return false
+    }
+
     func reset() {
         epochBuffer = []
         epochStartTime = nil
         lastSnoreEventEnd = nil
         outOfBedDetector.reset()
         metrics.reset()
+        envelopeHistory = []
+        prevEnvelopeRising = false
+        peakCooldown = 0
     }
 }

@@ -45,7 +45,8 @@ struct LiveSessionView: View {
 
                 BreathingStatsOverlay(
                     breathingRate: appState.currentBreathingRate,
-                    breathCount: appState.breathCount
+                    breathCount: appState.breathCount,
+                    amplitude: appState.currentAmplitude
                 )
             }
             .padding(.vertical, AppSpacing.sm)

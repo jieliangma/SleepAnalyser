@@ -34,6 +34,7 @@ final class AppState {
     var breathCount: Int = 0
 
     private var recordingTask: Task<Void, Never>?
+    private var realtimeTask: Task<Void, Never>?
     private var timerTask: Task<Void, Never>?
 
     private init() {
@@ -97,8 +98,23 @@ final class AppState {
 
         try await captureService.startCapture()
         let outputStream = pipeline.makeOutputStream()
+        let realtimeStream = pipeline.makeRealtimeStream()
 
         startTimer()
+
+        realtimeTask = Task { [weak self] in
+            guard let self else { return }
+            for await rtFrame in realtimeStream {
+                guard self.activeSession?.state == .recording else { break }
+                await MainActor.run {
+                    self.currentAmplitude = Double(rtFrame.rmsLevel)
+                    self.currentNoiseLevel = rtFrame.noiseDB
+                    if rtFrame.isBreathPeak {
+                        self.breathCount += 1
+                    }
+                }
+            }
+        }
 
         recordingTask = Task { [weak self] in
             guard let self else { return }
@@ -119,6 +135,8 @@ final class AppState {
     func stopSession() async throws {
         recordingTask?.cancel()
         recordingTask = nil
+        realtimeTask?.cancel()
+        realtimeTask = nil
         timerTask?.cancel()
         timerTask = nil
         captureService.stopCapture()
@@ -153,11 +171,6 @@ final class AppState {
         epochHistory.append(epoch)
         currentStage = smoothed
         currentBreathingRate = output.breathingSample.breathsPerMinute
-        currentNoiseLevel = Double(output.features.rmsEnergy)
-        currentAmplitude = output.breathingSample.amplitude
-        if output.breathingSample.breathsPerMinute > 0 {
-            breathCount += Int(output.breathingSample.breathsPerMinute * 30.0 / 60.0)
-        }
 
         for event in output.events {
             sessionEvents.append(event)
