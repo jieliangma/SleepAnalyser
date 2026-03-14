@@ -1,14 +1,21 @@
 import SwiftUI
 
 enum SidebarItem: String, CaseIterable, Identifiable {
-    case dashboard = "Dashboard"
-    case liveSession = "Live Session"
-    case morningReport = "Morning Report"
-    case trends = "Trends"
-    case profiles = "Profiles"
-    case settings = "Settings"
+    case dashboard, liveSession, morningReport, trends, profiles, settings
 
     var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .dashboard: return L10n.dashboard
+        case .liveSession: return L10n.liveSession
+        case .morningReport: return L10n.morningReport
+        case .trends: return L10n.trends
+        case .profiles: return L10n.profiles
+        case .settings: return L10n.settings
+        }
+    }
+
     var icon: String {
         switch self {
         case .dashboard: return "house.fill"
@@ -27,8 +34,7 @@ struct DashboardView: View {
     var body: some View {
         NavigationSplitView {
             List(SidebarItem.allCases, selection: $selectedItem) { item in
-                Label(item.rawValue, systemImage: item.icon)
-                    .tag(item)
+                Label(item.title, systemImage: item.icon).tag(item)
             }
             .listStyle(.sidebar)
             .frame(minWidth: 180)
@@ -58,16 +64,14 @@ struct DashboardContentView: View {
                     .padding(.top, AppSpacing.xl)
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: AppSpacing.md) {
-                    MetricCardView(icon: "clock.fill", title: "Total Sleep", value: "7h 23m", accentColor: AppColors.primary)
-                    MetricCardView(icon: "percent", title: "Efficiency", value: "92%", accentColor: AppColors.success)
-                    MetricCardView(icon: "moon.zzz.fill", title: "Deep Sleep", value: "18%", accentColor: Color(hex: "6366F1"))
-                    MetricCardView(icon: "brain.head.profile", title: "REM", value: "22%", accentColor: Color(hex: "A855F7"))
+                    MetricCardView(icon: "clock.fill", title: L10n.totalSleep, value: "7h 23m", accentColor: AppColors.primary)
+                    MetricCardView(icon: "percent", title: L10n.efficiency, value: "92%", accentColor: AppColors.success)
+                    MetricCardView(icon: "moon.zzz.fill", title: L10n.deepSleep, value: "18%", accentColor: Color(hex: "6366F1"))
+                    MetricCardView(icon: "brain.head.profile", title: L10n.remSleep, value: "22%", accentColor: Color(hex: "A855F7"))
                 }
 
                 VStack(alignment: .leading, spacing: AppSpacing.sm) {
-                    Text("Sleep Stages")
-                        .font(AppTypography.headline)
-                        .foregroundStyle(AppColors.textPrimary)
+                    Text(L10n.sleepStages).font(AppTypography.headline).foregroundStyle(AppColors.textPrimary)
                     HypnogramChartView(epochs: [])
                         .padding(AppSpacing.cardPadding)
                         .background(AppColors.surface)
@@ -75,12 +79,9 @@ struct DashboardContentView: View {
                 }
 
                 Button(action: {}) {
-                    Label("Start Sleep Tracking", systemImage: "moon.zzz.fill")
-                        .font(AppTypography.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(AppColors.primary)
-                        .foregroundStyle(.white)
+                    Label(L10n.startTracking, systemImage: "moon.zzz.fill")
+                        .font(AppTypography.headline).frame(maxWidth: .infinity).padding()
+                        .background(AppColors.primary).foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: AppSpacing.cardCornerRadius))
                 }
             }

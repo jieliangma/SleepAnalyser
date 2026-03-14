@@ -1,0 +1,119 @@
+"app.name" = "SleepAnalyser";
+"app.version" = "Version 1.0.0";
+"app.description" = "Analyze your sleep through breathing sounds.";
+
+"nav.dashboard" = "Dashboard";
+"nav.liveSession" = "Live Session";
+"nav.morningReport" = "Morning Report";
+"nav.trends" = "Trends";
+"nav.profiles" = "Profiles";
+"nav.settings" = "Settings";
+
+"session.startTracking" = "Start Sleep Tracking";
+"session.stopTracking" = "Stop Tracking";
+"session.startTrackingShort" = "Start Tracking";
+"session.stop" = "Stop";
+"session.recording" = "Recording";
+"session.notTracking" = "Not tracking";
+"session.openDashboard" = "Open Dashboard";
+
+"metric.sleepScore" = "Sleep Score";
+"metric.totalSleep" = "Total Sleep";
+"metric.efficiency" = "Efficiency";
+"metric.deepSleep" = "Deep Sleep";
+"metric.remSleep" = "REM";
+"metric.sleepStages" = "Sleep Stages";
+"metric.bedtime" = "Bedtime";
+"metric.wakeTime" = "Wake Time";
+"metric.duration" = "Duration";
+"metric.breathing" = "Breathing";
+"metric.signal" = "Signal";
+"metric.signalGood" = "Good";
+"metric.events" = "Events";
+"metric.insights" = "Insights";
+"metric.avgScore" = "Avg Score";
+"metric.avgDuration" = "Avg Duration";
+"metric.trend" = "Trend";
+"metric.improving" = "Improving";
+"metric.scoreTrend" = "Score Trend";
+
+"period.week" = "Week";
+"period.month" = "Month";
+"period.label" = "Period";
+
+"profile.add" = "Add Profile";
+"profile.defaultUser" = "Default User";
+"profile.defaultMic" = "Default Microphone";
+
+"settings.audio" = "Audio";
+"settings.privacy" = "Privacy";
+"settings.about" = "About";
+"settings.audioInput" = "Audio Input";
+"settings.microphone" = "Microphone";
+"settings.sensitivity" = "Sensitivity";
+"settings.calibrateRoom" = "Calibrate Room";
+"settings.data" = "Data";
+"settings.privacyNote" = "Audio is processed locally and never leaves your device.";
+"settings.exportData" = "Export Sleep Data";
+"settings.deleteAll" = "Delete All Data";
+
+"stage.awake" = "Awake";
+"stage.n1" = "Light Sleep (N1)";
+"stage.n2" = "Light Sleep (N2)";
+"stage.n3" = "Deep Sleep (N3)";
+"stage.rem" = "REM Sleep";
+"stage.unknown" = "Unknown";
+"stage.short.awake" = "Awake";
+"stage.short.n1" = "N1";
+"stage.short.n2" = "N2";
+"stage.short.deep" = "Deep";
+"stage.short.rem" = "REM";
+
+"chart.time" = "Time";
+"chart.stage" = "Stage";
+"chart.day" = "Day";
+"chart.score" = "Score";
+
+"confidence.veryLow" = "Very Low";
+"confidence.low" = "Low";
+"confidence.medium" = "Medium";
+"confidence.high" = "High";
+"confidence.veryHigh" = "Very High";
+
+"event.snore" = "Snoring";
+"event.disturbance" = "Disturbance";
+"event.speech" = "Speech/TV";
+"event.outOfBed" = "Got Out of Bed";
+"event.returnedToBed" = "Returned to Bed";
+"event.apnea" = "Possible Apnea";
+
+"source.traffic" = "Traffic";
+"source.hvac" = "HVAC/Air Conditioning";
+"source.rain" = "Rain";
+"source.thunder" = "Thunder";
+"source.partner" = "Partner";
+"source.pet" = "Pet";
+"source.tv" = "TV/Media";
+"source.alarm" = "Alarm/Notification";
+"source.unknown" = "Unknown";
+
+"state.idle" = "Idle";
+"state.preparing" = "Preparing";
+"state.recording" = "Recording";
+"state.paused" = "Paused";
+"state.stopped" = "Stopped";
+"state.failed" = "Failed";
+
+"insight.oversleep" = "You slept over 10 hours. Oversleeping can indicate poor sleep quality.";
+"insight.lowDeep" = "Your deep sleep was below average. Try maintaining a consistent bedtime and cool room temperature.";
+"insight.goodDeep" = "Excellent deep sleep tonight! This is important for physical recovery.";
+"insight.lowREM" = "REM sleep was low. Avoiding alcohol and reducing stress may help improve REM sleep.";
+"insight.noAwakenings" = "No awakenings detected — uninterrupted sleep is excellent for recovery!";
+"insight.slowOnset" = "It took over 30 minutes to fall asleep. Going to bed earlier or establishing a wind-down routine may help.";
+"insight.fastOnset" = "You fell asleep quickly — great sleep onset!";
+"insight.trackMore" = "Track more nights to see trends and patterns.";
+"insight.improving" = "Your sleep efficiency is improving! Keep up the good habits.";
+"insight.declining" = "Sleep efficiency has declined recently. Review your bedtime routine.";
+"insight.consistent" = "Sleep efficiency has been consistent this period.";
+
+"NSMicrophoneUsageDescription" = "SleepAnalyser needs microphone access to analyze your breathing patterns during sleep.";

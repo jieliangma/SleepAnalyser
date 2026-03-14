@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "SleepAnalyser needs microphone access to analyze your breathing patterns during sleep.";
+"CFBundleDisplayName" = "SleepAnalyser";

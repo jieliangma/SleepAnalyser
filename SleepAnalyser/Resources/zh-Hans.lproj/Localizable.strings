@@ -1,0 +1,119 @@
+"app.name" = "睡眠分析";
+"app.version" = "版本 1.0.0";
+"app.description" = "通过分析呼吸声音，记录你的睡眠质量。";
+
+"nav.dashboard" = "仪表盘";
+"nav.liveSession" = "实时监测";
+"nav.morningReport" = "晨间报告";
+"nav.trends" = "趋势";
+"nav.profiles" = "用户";
+"nav.settings" = "设置";
+
+"session.startTracking" = "开始睡眠追踪";
+"session.stopTracking" = "停止追踪";
+"session.startTrackingShort" = "开始追踪";
+"session.stop" = "停止";
+"session.recording" = "记录中";
+"session.notTracking" = "未在追踪";
+"session.openDashboard" = "打开仪表盘";
+
+"metric.sleepScore" = "睡眠评分";
+"metric.totalSleep" = "总睡眠";
+"metric.efficiency" = "效率";
+"metric.deepSleep" = "深度睡眠";
+"metric.remSleep" = "REM";
+"metric.sleepStages" = "睡眠阶段";
+"metric.bedtime" = "就寝时间";
+"metric.wakeTime" = "起床时间";
+"metric.duration" = "时长";
+"metric.breathing" = "呼吸";
+"metric.signal" = "信号";
+"metric.signalGood" = "良好";
+"metric.events" = "事件";
+"metric.insights" = "洞察";
+"metric.avgScore" = "平均评分";
+"metric.avgDuration" = "平均时长";
+"metric.trend" = "趋势";
+"metric.improving" = "改善中";
+"metric.scoreTrend" = "评分趋势";
+
+"period.week" = "周";
+"period.month" = "月";
+"period.label" = "时间段";
+
+"profile.add" = "添加用户";
+"profile.defaultUser" = "默认用户";
+"profile.defaultMic" = "默认麦克风";
+
+"settings.audio" = "音频";
+"settings.privacy" = "隐私";
+"settings.about" = "关于";
+"settings.audioInput" = "音频输入";
+"settings.microphone" = "麦克风";
+"settings.sensitivity" = "灵敏度";
+"settings.calibrateRoom" = "校准房间";
+"settings.data" = "数据";
+"settings.privacyNote" = "音频仅在本地处理，不会离开你的设备。";
+"settings.exportData" = "导出睡眠数据";
+"settings.deleteAll" = "删除所有数据";
+
+"stage.awake" = "清醒";
+"stage.n1" = "浅睡（N1）";
+"stage.n2" = "浅睡（N2）";
+"stage.n3" = "深睡（N3）";
+"stage.rem" = "快速眼动";
+"stage.unknown" = "未知";
+"stage.short.awake" = "清醒";
+"stage.short.n1" = "N1";
+"stage.short.n2" = "N2";
+"stage.short.deep" = "深睡";
+"stage.short.rem" = "REM";
+
+"chart.time" = "时间";
+"chart.stage" = "阶段";
+"chart.day" = "天";
+"chart.score" = "评分";
+
+"confidence.veryLow" = "极低";
+"confidence.low" = "低";
+"confidence.medium" = "中等";
+"confidence.high" = "高";
+"confidence.veryHigh" = "极高";
+
+"event.snore" = "打鼾";
+"event.disturbance" = "干扰";
+"event.speech" = "说话/电视";
+"event.outOfBed" = "离开床铺";
+"event.returnedToBed" = "回到床上";
+"event.apnea" = "疑似呼吸暂停";
+
+"source.traffic" = "交通噪音";
+"source.hvac" = "空调/暖通";
+"source.rain" = "雨声";
+"source.thunder" = "雷声";
+"source.partner" = "伴侣";
+"source.pet" = "宠物";
+"source.tv" = "电视/媒体";
+"source.alarm" = "闹钟/通知";
+"source.unknown" = "未知";
+
+"state.idle" = "空闲";
+"state.preparing" = "准备中";
+"state.recording" = "记录中";
+"state.paused" = "已暂停";
+"state.stopped" = "已停止";
+"state.failed" = "失败";
+
+"insight.oversleep" = "你睡了超过10小时。过度睡眠可能暗示睡眠质量不佳。";
+"insight.lowDeep" = "你的深度睡眠低于平均水平。尝试保持规律的就寝时间和凉爽的室温。";
+"insight.goodDeep" = "今晚深度睡眠表现优秀！这对身体恢复非常重要。";
+"insight.lowREM" = "REM睡眠偏低。减少饮酒和压力可能有助于改善REM睡眠。";
+"insight.noAwakenings" = "未检测到醒来——不间断的睡眠对恢复非常好！";
+"insight.slowOnset" = "你花了超过30分钟才入睡。提早上床或建立睡前放松习惯可能会有帮助。";
+"insight.fastOnset" = "你很快就入睡了——入睡速度很好！";
+"insight.trackMore" = "追踪更多夜晚以查看趋势和规律。";
+"insight.improving" = "你的睡眠效率正在改善！保持好习惯。";
+"insight.declining" = "睡眠效率近期有所下降。检查一下你的睡前习惯。";
+"insight.consistent" = "这段时期的睡眠效率一直保持稳定。";
+
+"NSMicrophoneUsageDescription" = "睡眠分析需要使用麦克风来分析你睡眠期间的呼吸模式。";

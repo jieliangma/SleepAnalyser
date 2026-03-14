@@ -24,6 +24,8 @@ class PBXObjects:
                 file_type = "sourcecode.swift"
             elif rel_path.endswith(".plist"):
                 file_type = "text.plist.xml"
+            elif rel_path.endswith(".strings"):
+                file_type = "text.plist.strings"
             else:
                 file_type = "text"
         self.file_refs[rel_path] = (fid, file_type)
@@ -50,13 +52,13 @@ def build_group_tree(base_dir, prefix, root_name):
             child_rel = os.path.join(rel_dir, d)
             child_has_files = False
             for _, _, fs in os.walk(os.path.join(ROOT, child_rel)):
-                if any(f.endswith(('.swift', '.plist')) for f in fs):
+                if any(f.endswith(('.swift', '.plist', '.strings')) for f in fs):
                     child_has_files = True
                     break
             if child_has_files:
                 entries.append(('dir', d, child_rel))
         for f in sorted(filenames):
-            if f.endswith(('.swift', '.plist')):
+            if f.endswith(('.swift', '.plist', '.strings')):
                 entries.append(('file', f, os.path.join(rel_dir, f)))
         tree[rel_dir] = entries
     return tree
@@ -116,11 +118,14 @@ xcassets_bf = sid("bf_Assets.xcassets")
 
 app_swift = [p for p in obj.file_refs if p.startswith("SleepAnalyser/") and p.endswith(".swift")]
 app_plist = [p for p in obj.file_refs if p.startswith("SleepAnalyser/") and p.endswith(".plist")]
+app_strings = [p for p in obj.file_refs if p.startswith("SleepAnalyser/") and p.endswith(".strings")]
 test_swift = [p for p in obj.file_refs if p.startswith("SleepAnalyserTests/") and p.endswith(".swift")]
 
 for f in app_swift:
     obj.get_build_file(f, "app_src")
 for f in app_plist:
+    obj.get_build_file(f, "app_res")
+for f in app_strings:
     obj.get_build_file(f, "app_res")
 for f in test_swift:
     obj.get_build_file(f, "test_src")
@@ -253,7 +258,7 @@ w(f"\t\t\tbuildConfigurationList = {proj_bcl};")
 w(f"\t\t\tcompatibilityVersion = \"Xcode 14.0\";")
 w(f"\t\t\tdevelopmentRegion = en;")
 w(f"\t\t\thasScannedForEncodings = 0;")
-w(f"\t\t\tknownRegions = (en, Base);")
+w(f"\t\t\tknownRegions = (en, \"zh-Hans\", \"zh-Hant\", Base);")
 w(f"\t\t\tmainGroup = {main_group_id};")
 w(f"\t\t\tproductRefGroup = {products_group_id};")
 w(f"\t\t\tprojectDirPath = \"\";")
@@ -268,6 +273,7 @@ w(f"\t\t{app_res_phase} = {{")
 w(f"\t\t\tisa = PBXResourcesBuildPhase;")
 w(f"\t\t\tbuildActionMask = 2147483647;")
 res_bids = [obj.build_files["app_res_" + f][0] for f in app_plist]
+res_bids += [obj.build_files["app_res_" + f][0] for f in app_strings]
 res_bids.append(xcassets_bf)
 w(f"\t\t\tfiles = ({', '.join(res_bids)});")
 w(f"\t\t\trunOnlyForDeploymentPostprocessing = 0;")
