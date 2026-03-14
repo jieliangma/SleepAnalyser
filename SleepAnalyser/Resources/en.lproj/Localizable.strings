@@ -45,6 +45,11 @@
 "profile.add" = "Add Profile";
 "profile.defaultUser" = "Default User";
 "profile.defaultMic" = "Default Microphone";
+"profile.switch" = "Switch";
+"profile.deleteTitle" = "Delete Profile";
+"profile.deleteConfirm" = "Delete";
+"profile.deleteMessage" = "Are you sure you want to delete \"%@\"? All sleep data for this profile will be permanently removed.";
+"common.cancel" = "Cancel";
 
 "settings.audio" = "Audio";
 "settings.privacy" = "Privacy";

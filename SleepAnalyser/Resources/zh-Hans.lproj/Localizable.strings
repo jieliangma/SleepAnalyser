@@ -45,6 +45,11 @@
 "profile.add" = "添加用户";
 "profile.defaultUser" = "默认用户";
 "profile.defaultMic" = "默认麦克风";
+"profile.switch" = "切换";
+"profile.deleteTitle" = "删除用户";
+"profile.deleteConfirm" = "删除";
+"profile.deleteMessage" = "确定要删除「%@」吗？该用户的所有睡眠数据将被永久移除。";
+"common.cancel" = "取消";
 
 "settings.audio" = "音频";
 "settings.privacy" = "隐私";
