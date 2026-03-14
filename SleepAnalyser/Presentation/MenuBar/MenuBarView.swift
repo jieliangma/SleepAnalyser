@@ -45,6 +45,14 @@ struct MenuBarView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent).tint(appState.isRecording ? AppColors.error : AppColors.primary)
+            Divider()
+            Button(role: .destructive) {
+                NSApplication.shared.terminate(nil)
+            } label: {
+                Label(L10n.quit, systemImage: "power")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
         }
         .padding(AppSpacing.md).frame(width: 280)
     }

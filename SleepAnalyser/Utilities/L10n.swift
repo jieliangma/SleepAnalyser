@@ -25,6 +25,7 @@ enum L10n {
     static var recording: String { s("session.recording") }
     static var notTracking: String { s("session.notTracking") }
     static var openDashboard: String { s("session.openDashboard") }
+    static var quit: String { s("app.quit") }
 
     // MARK: - Metrics
     static var sleepScore: String { s("metric.sleepScore") }

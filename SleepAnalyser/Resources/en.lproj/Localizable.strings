@@ -1,6 +1,7 @@
 "app.name" = "SleepAnalyser";
 "app.version" = "Version 1.0.0";
 "app.description" = "Analyze your sleep through breathing sounds.";
+"app.quit" = "Quit SleepAnalyser";
 
 "nav.dashboard" = "Dashboard";
 "nav.liveSession" = "Live Session";

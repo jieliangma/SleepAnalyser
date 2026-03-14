@@ -1,6 +1,7 @@
 "app.name" = "睡眠分析";
 "app.version" = "版本 1.0.0";
 "app.description" = "通过分析呼吸声音，记录你的睡眠质量。";
+"app.quit" = "退出睡眠分析";
 
 "nav.dashboard" = "仪表盘";
 "nav.liveSession" = "实时监测";
