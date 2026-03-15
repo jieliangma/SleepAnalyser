@@ -165,19 +165,27 @@ struct NoiseAnalysisView: View {
     private func captureCard(_ cap: NoiseCaptureRecorder.CaptureInfo) -> some View {
         let segs = segCache[cap.id] ?? []
         let amps = ampCache[cap.id] ?? []
+        let isThisPlaying = appState.audioPlayer.isPlaying && appState.audioPlayer.playingEventId == cap.id
+        let duration = captureDuration(cap)
+
         return VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Image(systemName: "calendar").foregroundStyle(AppColors.textTertiary)
-                Text(cap.date.formatted(date: .abbreviated, time: .shortened))
+            HStack(spacing: AppSpacing.sm) {
+                Text(captureDateString(cap.date))
                     .font(AppTypography.headline).foregroundStyle(AppColors.textPrimary)
-                Spacer()
-                if !segs.isEmpty {
-                    noiseSummaryBadges(segs)
-                }
-                Text(formatSize(cap.size)).font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
+                Text(DurationFormatter.format(isThisPlaying ? appState.audioPlayer.currentTime : duration, style: .compact))
+                    .font(.system(size: 11, design: .monospaced)).foregroundStyle(AppColors.textTertiary)
                 Button {
-                    Task { await reanalyzeCapture(cap) }
+                    guard let url = appState.noiseCaptureRecorder.audioURL(for: cap.directoryURL) else { return }
+                    if isThisPlaying { appState.audioPlayer.stop() } else { appState.audioPlayer.play(url: url, eventId: cap.id) }
                 } label: {
+                    Image(systemName: isThisPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 11)).foregroundStyle(AppColors.primary)
+                }
+                .buttonStyle(.plain)
+                Spacer()
+                if !segs.isEmpty { noiseSummaryBadges(segs) }
+                Text(formatSize(cap.size)).font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
+                Button { Task { await reanalyzeCapture(cap) } } label: {
                     Image(systemName: "arrow.trianglehead.2.clockwise").font(.system(size: 12)).foregroundStyle(AppColors.primary)
                 }
                 .buttonStyle(.plain)
@@ -197,7 +205,6 @@ struct NoiseAnalysisView: View {
             waveformView(amps: amps, segs: segs, capture: cap)
             labelRows(segs: segs, capture: cap, amps: amps)
             confirmBar(capture: cap, segs: segs)
-            playbackBar(capture: cap)
         }
         .background(AppColors.surface)
         .clipShape(RoundedRectangle(cornerRadius: AppSpacing.cardCornerRadius))
@@ -227,19 +234,6 @@ struct NoiseAnalysisView: View {
                     let totalDur = appState.audioPlayer.duration > 0
                         ? appState.audioPlayer.duration
                         : Double(amps.count) / 15.0
-
-                    let stripH = h * 0.15
-                    for seg in segs {
-                        let t0 = seg.timestamp.timeIntervalSince(capture.date)
-                        let t1 = seg.endTime.timeIntervalSince(capture.date)
-                        guard t1 > 0, t0 < totalDur else { continue }
-                        let x1 = max(0, t0 / totalDur * w)
-                        let x2 = min(w, t1 / totalDur * w)
-                        context.fill(
-                            Path(CGRect(x: x1, y: h - stripH, width: x2 - x1, height: stripH)),
-                            with: .color(noiseColor(seg.noiseType).opacity(0.35))
-                        )
-                    }
 
                     let pixelCount = Int(w)
                     for px in 0..<pixelCount {
@@ -428,36 +422,6 @@ struct NoiseAnalysisView: View {
         }
     }
 
-    // MARK: - Playback
-
-    private func playbackBar(capture: NoiseCaptureRecorder.CaptureInfo) -> some View {
-        let isThisPlaying = appState.audioPlayer.isPlaying && appState.audioPlayer.playingEventId == capture.id
-        let amps = ampCache[capture.id] ?? []
-        let duration = Double(amps.count) / 15.0
-
-        return HStack(spacing: AppSpacing.sm) {
-            if !segsFor(capture).isEmpty {
-                noiseSummaryBadges(segsFor(capture))
-            }
-            Spacer()
-            Text(DurationFormatter.format(isThisPlaying ? appState.audioPlayer.currentTime : duration, style: .compact))
-                .font(.system(size: 10, design: .monospaced)).foregroundStyle(AppColors.textTertiary)
-            Button {
-                guard let url = appState.noiseCaptureRecorder.audioURL(for: capture.directoryURL) else { return }
-                if isThisPlaying { appState.audioPlayer.stop() } else { appState.audioPlayer.play(url: url, eventId: capture.id) }
-            } label: {
-                Image(systemName: isThisPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 12)).foregroundStyle(AppColors.primary)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, AppSpacing.cardPadding).padding(.vertical, 6)
-    }
-
-    private func segsFor(_ capture: NoiseCaptureRecorder.CaptureInfo) -> [NoiseSegment] {
-        segCache[capture.id] ?? []
-    }
-
     // MARK: - Summary Badges
 
     private func noiseSummaryBadges(_ segs: [NoiseSegment]) -> some View {
@@ -598,6 +562,22 @@ struct NoiseAnalysisView: View {
     }
 
     // MARK: - Helpers
+
+    private func captureDateString(_ date: Date) -> String {
+        let fmt = DateFormatter()
+        fmt.dateStyle = .medium
+        fmt.timeStyle = .short
+        fmt.locale = Locale.current
+        return fmt.string(from: date)
+    }
+
+    private func captureDuration(_ cap: NoiseCaptureRecorder.CaptureInfo) -> TimeInterval {
+        guard let url = appState.noiseCaptureRecorder.audioURL(for: cap.directoryURL),
+              let file = try? AVAudioFile(forReading: url) else {
+            return 0
+        }
+        return Double(file.length) / file.processingFormat.sampleRate
+    }
 
     private func noiseColor(_ type: String) -> Color {
         Color(hex: appState.noiseTypeManager.colorHex(for: type))
