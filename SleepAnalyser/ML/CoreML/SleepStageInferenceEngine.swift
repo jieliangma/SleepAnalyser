@@ -86,6 +86,8 @@ final class SleepStageInferenceEngine: @unchecked Sendable {
         }
 
         if hasHighNoise { confidence *= 0.7 }
+        if context.contains("room_calibrated") { confidence = min(1.0, confidence * 1.15) }
+        if context.contains("above_baseline") { confidence *= 0.8 }
         let alternatives = SleepStage.allCases
             .filter { $0 != stage && $0 != .unknown }
             .map { ($0, (1.0 - confidence) / 4.0) }

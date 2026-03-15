@@ -138,6 +138,7 @@ struct CalibrationView: View {
                 try await appState.captureService.startCapture()
                 let stream = appState.captureService.audioStream
                 let preprocessor = AudioPreprocessor()
+                let calibSuppressor = NoiseSuppressor()
                 var levels: [Double] = []
                 let duration: TimeInterval = 10.0
                 let start = Date()
@@ -146,6 +147,7 @@ struct CalibrationView: View {
                     let elapsed = Date().timeIntervalSince(start)
                     let processed = preprocessor.process(frame: frame)
                     levels.append(processed.noiseLevel)
+                    _ = calibSuppressor.suppress(processed.samples)
                     await MainActor.run {
                         progress = min(1.0, elapsed / duration)
                         noiseLevel = processed.noiseLevel
@@ -157,14 +159,18 @@ struct CalibrationView: View {
 
                 let avg = levels.isEmpty ? -50.0 : levels.reduce(0, +) / Double(levels.count)
                 let gain = max(0.5, min(2.0, -30.0 / avg))
+                let spectrumData = calibSuppressor.exportNoiseFloorSpectrum()
 
                 await MainActor.run {
                     if room != nil {
                         room?.baselineNoiseLevel = avg
                         room?.micGainFactor = gain
+                        room?.noiseFloorSpectrum = spectrumData
                         room?.lastCalibratedAt = Date()
                     } else if let profileId = appState.activeProfile?.id {
-                        room = RoomProfile(userProfileId: profileId, name: L10n.defaultUser, baselineNoiseLevel: avg, micGainFactor: gain, lastCalibratedAt: Date())
+                        room = RoomProfile(userProfileId: profileId, name: L10n.defaultUser,
+                                           baselineNoiseLevel: avg, micGainFactor: gain,
+                                           noiseFloorSpectrum: spectrumData, lastCalibratedAt: Date())
                     }
                     noiseLevel = avg
                     step = .done

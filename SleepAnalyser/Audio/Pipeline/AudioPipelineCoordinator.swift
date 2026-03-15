@@ -60,6 +60,20 @@ final class AudioPipelineCoordinator: @unchecked Sendable {
         self.metrics = metrics
     }
 
+    private var roomCalibrated = false
+
+    func configureForRoom(_ room: RoomProfile?, knownNoiseTypes: [NoiseTypeConfig]) {
+        if let room {
+            noiseSuppressor.loadRoomCalibration(
+                noiseFloorSpectrum: room.noiseFloorSpectrum,
+                baselineNoiseLevel: room.baselineNoiseLevel,
+                micGainFactor: room.micGainFactor
+            )
+            baselineRMS = Float(pow(10, room.baselineNoiseLevel / 20))
+            roomCalibrated = true
+        }
+    }
+
     func makeOutputStream() -> AsyncStream<PipelineOutput> {
         AsyncStream { [weak self] continuation in
             self?.continuation = continuation
@@ -143,6 +157,8 @@ final class AudioPipelineCoordinator: @unchecked Sendable {
             var contextFlags: [String] = []
             if !events.isEmpty { contextFlags.append("has_events") }
             if processed.noiseLevel > -20 { contextFlags.append("high_noise") }
+            if roomCalibrated { contextFlags.append("room_calibrated") }
+            if baselineRMS > 0.01 && rms > baselineRMS * 3 { contextFlags.append("above_baseline") }
 
             let output = PipelineOutput(
                 timestamp: epochStart,

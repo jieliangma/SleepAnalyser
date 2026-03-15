@@ -119,6 +119,7 @@ final class AppState {
         }
 
         try await captureService.startCapture()
+        pipeline.configureForRoom(activeRoom, knownNoiseTypes: noiseTypeManager.types)
         try? recordingManager.startNightRecording(sessionId: session.id)
         let outputStream = pipeline.makeOutputStream()
         let realtimeStream = pipeline.makeRealtimeStream()

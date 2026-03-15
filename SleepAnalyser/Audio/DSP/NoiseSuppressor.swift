@@ -7,23 +7,37 @@ final class NoiseSuppressor: @unchecked Sendable {
     private let floorFactor: Float = 0.01
     private let smoothingAlpha: Float = 0.98
     private let fftSize: Int
+    private var gainFactor: Float = 1.0
 
     init(fftSize: Int = 1024, overSubtractionFactor: Float = 2.0) {
         self.fftSize = fftSize
         self.overSubtractionFactor = overSubtractionFactor
     }
 
+    func loadRoomCalibration(noiseFloorSpectrum: Data?, baselineNoiseLevel: Double, micGainFactor: Double) {
+        if let data = noiseFloorSpectrum {
+            noiseFloor = data.withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
+        }
+        gainFactor = Float(micGainFactor)
+    }
+
     func suppress(_ samples: [Float]) -> [Float] {
         guard samples.count >= fftSize else { return samples }
 
-        let magnitude = computeMagnitudeSpectrum(samples)
+        var input = samples
+        if gainFactor != 1.0 {
+            var g = gainFactor
+            vDSP_vsmul(samples, 1, &g, &input, 1, vDSP_Length(samples.count))
+        }
+
+        let magnitude = computeMagnitudeSpectrum(input)
 
         if noiseFloor == nil {
             noiseFloor = magnitude
-            return samples
+            return input
         }
 
-        guard var updatedFloor = noiseFloor else { return samples }
+        guard var updatedFloor = noiseFloor else { return input }
         for i in 0..<min(magnitude.count, updatedFloor.count) {
             updatedFloor[i] = smoothingAlpha * updatedFloor[i] + (1 - smoothingAlpha) * min(magnitude[i], updatedFloor[i] * 3)
         }
@@ -36,12 +50,12 @@ final class NoiseSuppressor: @unchecked Sendable {
         }
 
         let ratio = computeWienerGain(original: magnitude, cleaned: cleaned)
-        var output = [Float](repeating: 0, count: samples.count)
-        for i in 0..<min(samples.count, ratio.count) {
-            output[i] = samples[i] * ratio[min(i, ratio.count - 1)]
+        var output = [Float](repeating: 0, count: input.count)
+        for i in 0..<min(input.count, ratio.count) {
+            output[i] = input[i] * ratio[min(i, ratio.count - 1)]
         }
-        for i in ratio.count..<samples.count {
-            output[i] = samples[i] * (ratio.last ?? 1.0)
+        for i in ratio.count..<input.count {
+            output[i] = input[i] * (ratio.last ?? 1.0)
         }
         return output
     }
@@ -76,5 +90,10 @@ final class NoiseSuppressor: @unchecked Sendable {
             gain[i] = original[i] > 0 ? cleaned[i] / original[i] : 0
         }
         return gain
+    }
+
+    func exportNoiseFloorSpectrum() -> Data? {
+        guard let floor = noiseFloor else { return nil }
+        return floor.withUnsafeBufferPointer { Data(buffer: $0) }
     }
 }
