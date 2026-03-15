@@ -22,7 +22,7 @@ final class AudioRecordingManager: @unchecked Sendable {
 
     var nightAmplitudes: [Float] { amplitudeSamples }
 
-    private static let directoryDateFormatter: DateFormatter = {
+    private static let dirDateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd_HHmm"
         f.locale = Locale(identifier: "en_US_POSIX")
@@ -43,11 +43,16 @@ final class AudioRecordingManager: @unchecked Sendable {
         frameCounter = 0
         ringBuffer = []
 
-        let dateStr = Self.directoryDateFormatter.string(from: Date())
-        let dirName = "\(dateStr)_\(sessionId.uuidString.prefix(8))"
+        let dateStr = Self.dirDateFormatter.string(from: Date())
+        let dirName = "\(dateStr)"
         let sessionDir = storageDir.appendingPathComponent(dirName, isDirectory: true)
         try FileManager.default.createDirectory(at: sessionDir, withIntermediateDirectories: true)
         currentSessionDir = sessionDir
+
+        let meta: [String: String] = ["sessionId": sessionId.uuidString, "startDate": ISO8601DateFormatter().string(from: Date())]
+        let metaData = try JSONSerialization.data(withJSONObject: meta)
+        try metaData.write(to: sessionDir.appendingPathComponent("session.json"))
+
         try openNewSegment()
     }
 
@@ -80,8 +85,8 @@ final class AudioRecordingManager: @unchecked Sendable {
         let clipSamples = Int(bufferSeconds * 2 * sampleRate + sampleRate)
         guard !ringBuffer.isEmpty else { return nil }
         let clipData = Array(ringBuffer.suffix(min(clipSamples, ringBuffer.count)))
-
-        let url = storageDir.appendingPathComponent("\(eventId.uuidString)_clip.caf")
+        guard let sessionDir = currentSessionDir else { return nil }
+        let url = sessionDir.appendingPathComponent("clip_\(eventId.uuidString.prefix(8)).caf")
         guard let writer = try? AudioFileWriter(url: url, sampleRate: sampleRate) else { return nil }
         writer.write(clipData)
         writer.close()
@@ -103,64 +108,74 @@ final class AudioRecordingManager: @unchecked Sendable {
         if let dir = findSessionDir(sessionId) {
             try? FileManager.default.removeItem(at: dir)
         }
-        let legacyFile = storageDir.appendingPathComponent("\(sessionId.uuidString)_full.caf")
-        try? FileManager.default.removeItem(at: legacyFile)
     }
 
     func segmentURLs(for sessionId: UUID) -> [URL] {
-        if let dir = findSessionDir(sessionId) {
-            let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
-            let segments = files.filter { $0.pathExtension == "caf" }.sorted { $0.lastPathComponent < $1.lastPathComponent }
-            if !segments.isEmpty { return segments }
-        }
-        let legacy = storageDir.appendingPathComponent("\(sessionId.uuidString)_full.caf")
-        return FileManager.default.fileExists(atPath: legacy.path) ? [legacy] : []
+        guard let dir = findSessionDir(sessionId) else { return [] }
+        let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
+        return files
+            .filter { $0.pathExtension == "caf" && $0.lastPathComponent.hasPrefix("seg_") }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
     }
 
     func nightRecordingExists(for sessionId: UUID) -> Bool {
         !segmentURLs(for: sessionId).isEmpty
     }
 
-    private func findSessionDir(_ sessionId: UUID) -> URL? {
-        let prefix = sessionId.uuidString.prefix(8)
-        guard let items = try? FileManager.default.contentsOfDirectory(at: storageDir, includingPropertiesForKeys: [.isDirectoryKey]) else { return nil }
-        return items.first { item in
-            let isDir = (try? item.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
-            return isDir && item.lastPathComponent.contains(prefix)
-        }
+    struct RecordingInfo {
+        let sessionId: UUID
+        let directoryURL: URL
+        let totalSize: Int64
+        let date: Date
+        let segmentCount: Int
     }
 
-    func allRecordings() -> [(sessionId: String, url: URL, size: Int64, date: Date, segmentCount: Int)] {
-        guard let contents = try? FileManager.default.contentsOfDirectory(at: storageDir, includingPropertiesForKeys: [.isDirectoryKey, .creationDateKey]) else { return [] }
+    func allRecordings() -> [RecordingInfo] {
+        guard let contents = try? FileManager.default.contentsOfDirectory(at: storageDir, includingPropertiesForKeys: [.isDirectoryKey]) else { return [] }
 
-        var results: [(String, URL, Int64, Date, Int)] = []
-
+        var results: [RecordingInfo] = []
         for item in contents {
             let isDir = (try? item.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+            guard isDir else { continue }
 
-            if isDir {
-                let dirName = item.lastPathComponent
-                let segments = (try? FileManager.default.contentsOfDirectory(at: item, includingPropertiesForKeys: nil))?
-                    .filter { $0.pathExtension == "caf" } ?? []
-                guard !segments.isEmpty else { continue }
-                let totalSize = segments.reduce(Int64(0)) { sum, url in
-                    sum + (Int64((try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0))
-                }
-                let datePart = String(dirName.prefix(15))
-                let date = Self.directoryDateFormatter.date(from: datePart)
-                    ?? (try? item.resourceValues(forKeys: [.creationDateKey]).creationDate)
-                    ?? Date()
-                let sessionId = dirName.contains("_") ? String(dirName.split(separator: "_").last ?? "") : dirName
-                results.append((sessionId, item, totalSize, date, segments.count))
-            } else if item.lastPathComponent.hasSuffix("_full.caf") {
-                let sessionId = item.lastPathComponent.replacingOccurrences(of: "_full.caf", with: "")
-                let attrs = try? FileManager.default.attributesOfItem(atPath: item.path)
-                let size = (attrs?[.size] as? Int64) ?? 0
-                let date = (attrs?[.creationDate] as? Date) ?? Date()
-                results.append((sessionId, item, size, date, 1))
+            let metaURL = item.appendingPathComponent("session.json")
+            guard let metaData = try? Data(contentsOf: metaURL),
+                  let meta = try? JSONSerialization.jsonObject(with: metaData) as? [String: String],
+                  let idStr = meta["sessionId"],
+                  let sessionId = UUID(uuidString: idStr) else { continue }
+
+            let segments = (try? FileManager.default.contentsOfDirectory(at: item, includingPropertiesForKeys: nil))?
+                .filter { $0.pathExtension == "caf" && $0.lastPathComponent.hasPrefix("seg_") } ?? []
+            guard !segments.isEmpty else { continue }
+
+            let totalSize = segments.reduce(Int64(0)) { sum, url in
+                sum + (Int64((try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0))
+            }
+
+            let datePart = String(item.lastPathComponent.prefix(15))
+            let date = Self.dirDateFormatter.date(from: datePart)
+                ?? (try? item.resourceValues(forKeys: [.creationDateKey]).creationDate)
+                ?? Date()
+
+            results.append(RecordingInfo(sessionId: sessionId, directoryURL: item, totalSize: totalSize, date: date, segmentCount: segments.count))
+        }
+        return results.sorted { $0.date > $1.date }
+    }
+
+    private func findSessionDir(_ sessionId: UUID) -> URL? {
+        guard let contents = try? FileManager.default.contentsOfDirectory(at: storageDir, includingPropertiesForKeys: [.isDirectoryKey]) else { return nil }
+        let targetId = sessionId.uuidString
+        for item in contents {
+            let isDir = (try? item.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+            guard isDir else { continue }
+            let metaURL = item.appendingPathComponent("session.json")
+            if let data = try? Data(contentsOf: metaURL),
+               let meta = try? JSONSerialization.jsonObject(with: data) as? [String: String],
+               meta["sessionId"] == targetId {
+                return item
             }
         }
-        return results.sorted { $0.3 > $1.3 }
+        return nil
     }
 
     private func openNewSegment() throws {
