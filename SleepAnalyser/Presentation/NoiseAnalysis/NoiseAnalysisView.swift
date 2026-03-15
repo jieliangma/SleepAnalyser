@@ -310,7 +310,7 @@ struct NoiseAnalysisView: View {
             return seg.noiseType
         }
 
-        return ScrollView(.horizontal, showsIndicators: false) {
+        return ScrollView(.horizontal, showsIndicators: true) {
             HStack(spacing: 6) {
                 ForEach(uniqueTypes, id: \.self) { type in
                     let typeLabel = NoiseTypeLabel(rawValue: type) ?? .unknown
@@ -318,14 +318,17 @@ struct NoiseAnalysisView: View {
                         Circle().fill(noiseColor(type)).frame(width: 6, height: 6)
                         Text(typeLabel.displayName)
                             .font(.system(size: 10)).foregroundStyle(AppColors.textSecondary)
+                            .fixedSize()
                     }
                     .padding(.horizontal, 8).padding(.vertical, 3)
                     .background(noiseColor(type).opacity(0.08))
                     .clipShape(Capsule())
+                    .fixedSize()
                 }
             }
             .padding(.horizontal, AppSpacing.cardPadding)
         }
+        .scrollIndicators(.visible)
     }
 
     private struct MergedLabel: Identifiable {
