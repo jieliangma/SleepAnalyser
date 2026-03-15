@@ -6,62 +6,46 @@ struct NoiseAnalysisView: View {
     @State private var segments: [NoiseSegment] = []
     @State private var editingSegment: NoiseSegment?
     @State private var filterType: String = "all"
-    @State private var isLiveCapturing = false
+    @State private var isCapturing = false
     @State private var liveNoiseType: String = "unknown"
     @State private var liveDB: Double = -50
     @State private var captureTask: Task<Void, Never>?
+    @State private var captures: [NoiseCaptureRecorder.CaptureInfo] = []
+    @State private var selectedCapture: NoiseCaptureRecorder.CaptureInfo?
+    @State private var waveformAmps: [Float] = []
 
     var body: some View {
         ScrollView {
             VStack(spacing: AppSpacing.lg) {
-                header
-                liveCaptureSection
+                captureControls
+                if let sel = selectedCapture { waveformPlayer(sel) }
                 filterBar
-                if filteredSegments.isEmpty {
-                    emptyState
-                } else {
-                    segmentsList
-                }
+                segmentsList
             }
             .padding(AppSpacing.lg)
         }
         .background(AppColors.background)
-        .task { await loadSegments() }
-        .sheet(item: $editingSegment) { segment in
-            NoiseSegmentEditorView(segment: segment, onSave: { updated in
-                if let idx = segments.firstIndex(where: { $0.id == updated.id }) {
-                    segments[idx] = updated
-                }
-                Task { await saveSegment(updated) }
+        .task {
+            captures = appState.noiseCaptureRecorder.allCaptures()
+            await loadSegments()
+        }
+        .sheet(item: $editingSegment) { seg in
+            NoiseSegmentEditorView(segment: seg, onSave: { updated in
+                if let idx = segments.firstIndex(where: { $0.id == updated.id }) { segments[idx] = updated }
+                Task { await saveAndRetrain(updated) }
             })
         }
     }
 
-    private var header: some View {
-        HStack {
-            Text(L10n.noiseAnalysis).font(AppTypography.title).foregroundStyle(AppColors.textPrimary)
-            Spacer()
-            Button {
-                exportMLTrainingData()
-            } label: {
-                Label(L10n.exportMLData, systemImage: "square.and.arrow.up")
-                    .font(.system(size: 12, weight: .medium)).foregroundStyle(AppColors.primary)
-                    .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(AppColors.primary.opacity(0.1)).clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            Text("\(filteredSegments.count)").font(AppTypography.metricValue).foregroundStyle(AppColors.textSecondary)
-        }
-    }
-
-    private var liveCaptureSection: some View {
+    private var captureControls: some View {
         VStack(spacing: AppSpacing.md) {
             HStack {
-                Text(L10n.liveCapture).font(AppTypography.headline).foregroundStyle(AppColors.textPrimary)
+                Text(L10n.noiseAnalysis).font(AppTypography.title).foregroundStyle(AppColors.textPrimary)
                 Spacer()
-                if isLiveCapturing {
+                if isCapturing {
                     HStack(spacing: 4) {
-                        Circle().fill(AppColors.success).frame(width: 6, height: 6)
+                        Circle().fill(AppColors.error).frame(width: 6, height: 6)
+                        Text(L10n.recording).font(AppTypography.caption).foregroundStyle(AppColors.error)
                         Text((NoiseTypeLabel(rawValue: liveNoiseType) ?? .unknown).displayName)
                             .font(AppTypography.caption).foregroundStyle(AppColors.textSecondary)
                         Text(String(format: "%.0f dB", liveDB))
@@ -69,21 +53,132 @@ struct NoiseAnalysisView: View {
                     }
                 }
             }
-            Button {
-                if isLiveCapturing { stopLiveCapture() } else { startLiveCapture() }
-            } label: {
-                Label(isLiveCapturing ? L10n.stopCapture : L10n.startCapture,
-                      systemImage: isLiveCapturing ? "stop.fill" : "mic.fill")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(isLiveCapturing ? AppColors.error : AppColors.primary)
-                    .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background((isLiveCapturing ? AppColors.error : AppColors.primary).opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            HStack(spacing: AppSpacing.md) {
+                Button {
+                    if isCapturing { stopCapture() } else { startCapture() }
+                } label: {
+                    Label(isCapturing ? L10n.stopCapture : L10n.startCapture,
+                          systemImage: isCapturing ? "stop.fill" : "mic.fill")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(isCapturing ? .white : AppColors.primary)
+                        .padding(.horizontal, 16).padding(.vertical, 8)
+                        .background(isCapturing ? AppColors.error : AppColors.primary.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
+
+                if !captures.isEmpty {
+                    Picker(L10n.recordings, selection: $selectedCapture) {
+                        Text("—").tag(NoiseCaptureRecorder.CaptureInfo?.none)
+                        ForEach(captures) { cap in
+                            Text(cap.date, style: .date).tag(NoiseCaptureRecorder.CaptureInfo?.some(cap))
+                        }
+                    }
+                    .frame(width: 200)
+                    .onChange(of: selectedCapture) { _, cap in
+                        if let cap { waveformAmps = appState.noiseCaptureRecorder.loadAmplitudes(from: cap.directoryURL) }
+                        else { waveformAmps = [] }
+                    }
+                }
             }
-            .buttonStyle(.plain)
         }
         .padding(AppSpacing.cardPadding).background(AppColors.surface)
         .clipShape(RoundedRectangle(cornerRadius: AppSpacing.cardCornerRadius))
+    }
+
+    private func waveformPlayer(_ capture: NoiseCaptureRecorder.CaptureInfo) -> some View {
+        VStack(spacing: AppSpacing.sm) {
+            waveformCanvas(capture)
+            playbackBar(capture)
+        }
+        .padding(AppSpacing.cardPadding).background(AppColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: AppSpacing.cardCornerRadius))
+    }
+
+    private func waveformCanvas(_ capture: NoiseCaptureRecorder.CaptureInfo) -> some View {
+        GeometryReader { geo in
+            Canvas { context, size in
+                let w = size.width, h = size.height, midY = h / 2
+                guard !waveformAmps.isEmpty else { return }
+                let step = w / Double(waveformAmps.count)
+
+                let captureStart = capture.date
+                let totalDur = appState.audioPlayer.duration > 0 ? appState.audioPlayer.duration : Double(waveformAmps.count) * 0.3
+
+                for seg in segments {
+                    let segStartOffset = seg.timestamp.timeIntervalSince(captureStart)
+                    let segEndOffset = seg.endTime.timeIntervalSince(captureStart)
+                    guard segEndOffset > 0, segStartOffset < totalDur else { continue }
+                    let x1 = max(0, segStartOffset / totalDur * w)
+                    let x2 = min(w, segEndOffset / totalDur * w)
+                    let color = noiseColor(seg.noiseType)
+                    context.fill(Path(CGRect(x: x1, y: 0, width: x2 - x1, height: h)), with: .color(color.opacity(0.15)))
+                }
+
+                var path = Path()
+                for (i, amp) in waveformAmps.enumerated() {
+                    let x = Double(i) * step
+                    let barH = Double(amp) * h * 4
+                    path.addRect(CGRect(x: x, y: midY - barH / 2, width: max(step - 0.3, 0.3), height: max(barH, 0.5)))
+                }
+                context.fill(path, with: .color(AppColors.primary.opacity(0.5)))
+
+                if appState.audioPlayer.isPlaying && appState.audioPlayer.duration > 0 {
+                    let progress = appState.audioPlayer.currentTime / appState.audioPlayer.duration
+                    var cursor = Path()
+                    cursor.move(to: CGPoint(x: progress * w, y: 0))
+                    cursor.addLine(to: CGPoint(x: progress * w, y: h))
+                    context.stroke(cursor, with: .color(AppColors.error), lineWidth: 1.5)
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture { location in
+                guard appState.audioPlayer.duration > 0 else { return }
+                let fraction = location.x / geo.size.width
+                appState.audioPlayer.seek(to: fraction * appState.audioPlayer.duration)
+            }
+        }
+        .frame(height: 100)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    private func playbackBar(_ capture: NoiseCaptureRecorder.CaptureInfo) -> some View {
+        HStack(spacing: AppSpacing.md) {
+            Text(DurationFormatter.format(appState.audioPlayer.currentTime, style: .compact))
+                .font(AppTypography.caption).foregroundStyle(AppColors.textTertiary).frame(width: 50)
+
+            Button {
+                guard let url = appState.noiseCaptureRecorder.audioURL(for: capture.directoryURL) else { return }
+                if appState.audioPlayer.isPlaying && appState.audioPlayer.playingEventId == capture.id {
+                    appState.audioPlayer.stop()
+                } else {
+                    appState.audioPlayer.play(url: url, eventId: capture.id)
+                }
+            } label: {
+                Image(systemName: appState.audioPlayer.isPlaying && appState.audioPlayer.playingEventId == capture.id ? "pause.circle.fill" : "play.circle.fill")
+                    .font(.system(size: 28)).foregroundStyle(AppColors.primary)
+            }
+            .buttonStyle(.plain)
+
+            Slider(value: Binding(
+                get: { appState.audioPlayer.duration > 0 ? appState.audioPlayer.currentTime / appState.audioPlayer.duration : 0 },
+                set: { appState.audioPlayer.seek(to: $0 * appState.audioPlayer.duration) }
+            ), in: 0...1)
+            .tint(AppColors.primary)
+
+            Text(DurationFormatter.format(appState.audioPlayer.duration, style: .compact))
+                .font(AppTypography.caption).foregroundStyle(AppColors.textTertiary).frame(width: 50)
+
+            Button {
+                appState.noiseCaptureRecorder.deleteCapture(capture)
+                captures = appState.noiseCaptureRecorder.allCaptures()
+                selectedCapture = nil
+                waveformAmps = []
+            } label: {
+                Image(systemName: "trash").font(.system(size: 13)).foregroundStyle(AppColors.error.opacity(0.7))
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     private var filterBar: some View {
@@ -118,25 +213,21 @@ struct NoiseAnalysisView: View {
 
     private var segmentsList: some View {
         LazyVStack(spacing: AppSpacing.sm) {
-            ForEach(filteredSegments) { segment in
-                segmentCard(segment)
-            }
+            ForEach(filteredSegments) { seg in segmentCard(seg) }
         }
     }
 
     private func segmentCard(_ seg: NoiseSegment) -> some View {
         let typeLabel = NoiseTypeLabel(rawValue: seg.noiseType) ?? .unknown
         return HStack(spacing: AppSpacing.md) {
-            Image(systemName: typeLabel.sfSymbol)
-                .font(.system(size: 20))
-                .foregroundStyle(seg.isConfirmed ? AppColors.success : AppColors.primary)
-                .frame(width: 32)
-
+            RoundedRectangle(cornerRadius: 2).fill(noiseColor(seg.noiseType)).frame(width: 4, height: 36)
+            Image(systemName: typeLabel.sfSymbol).font(.system(size: 18))
+                .foregroundStyle(seg.isConfirmed ? AppColors.success : noiseColor(seg.noiseType)).frame(width: 24)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: AppSpacing.sm) {
                     Text(seg.displayType).font(AppTypography.headline).foregroundStyle(AppColors.textPrimary)
                     if seg.isConfirmed {
-                        Image(systemName: "checkmark.seal.fill").font(.system(size: 12)).foregroundStyle(AppColors.success)
+                        Image(systemName: "checkmark.seal.fill").font(.system(size: 10)).foregroundStyle(AppColors.success)
                     }
                 }
                 HStack(spacing: AppSpacing.sm) {
@@ -145,51 +236,104 @@ struct NoiseAnalysisView: View {
                     Text(String(format: "%.0f dB", seg.energyDB)).font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
                 }
             }
-
             Spacer()
-
-            if seg.audioClipURL != nil {
+            if let url = seg.audioClipURL {
                 Button {
-                    if let url = seg.audioClipURL {
-                        appState.audioPlayer.toggle(url: url, eventId: seg.id)
-                    }
+                    appState.audioPlayer.toggle(url: url, eventId: seg.id)
                 } label: {
-                    Image(systemName: appState.audioPlayer.playingEventId == seg.id ? "stop.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 22)).foregroundStyle(AppColors.primary)
+                    Image(systemName: appState.audioPlayer.playingEventId == seg.id ? "stop.circle" : "play.circle")
+                        .font(.system(size: 18)).foregroundStyle(AppColors.primary)
                 }
                 .buttonStyle(.plain)
             }
-
             Button { editingSegment = seg } label: {
-                Image(systemName: "pencil.circle").font(.system(size: 18)).foregroundStyle(AppColors.textSecondary)
+                Image(systemName: "pencil.circle").font(.system(size: 16)).foregroundStyle(AppColors.textSecondary)
             }
             .buttonStyle(.plain)
         }
-        .padding(AppSpacing.cardPadding)
-        .background(AppColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: AppSpacing.cardCornerRadius))
+        .padding(.horizontal, AppSpacing.cardPadding).padding(.vertical, 8)
+        .background(AppColors.surface).clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    private var emptyState: some View {
-        VStack(spacing: AppSpacing.md) {
-            Image(systemName: "waveform.badge.magnifyingglass").font(.system(size: 48)).foregroundStyle(AppColors.textTertiary)
-            Text(L10n.noNoiseSegments).font(AppTypography.body).foregroundStyle(AppColors.textSecondary)
+    private func noiseColor(_ type: String) -> Color {
+        switch type {
+        case "traffic", "motorcycle": return AppColors.error
+        case "wind", "rain": return Color(hex: "38BDF8")
+        case "hvac": return AppColors.warning
+        case "speech": return Color(hex: "A855F7")
+        case "quiet": return AppColors.success
+        default: return AppColors.textTertiary
         }
-        .padding(.top, 60)
+    }
+
+    private func startCapture() {
+        isCapturing = true
+        captureTask = Task {
+            do {
+                if !appState.micPermissionGranted { await appState.requestMicPermission() }
+                guard appState.micPermissionGranted else { return }
+                let captureId = try appState.noiseCaptureRecorder.startCapture()
+                try await appState.captureService.startCapture()
+                let separator = NoiseSeparatorBridge()
+                let stream = appState.captureService.audioStream
+                var segStart = Date()
+
+                for await frame in stream {
+                    guard isCapturing else { break }
+                    appState.noiseCaptureRecorder.feedAudio(frame.samples)
+                    separator.updateNoiseFloor(samples: frame.samples)
+                    let (noiseType, conf) = separator.classifyNoise(samples: frame.samples)
+                    let bands = separator.computeBandEnergy(samples: frame.samples)
+                    let db = bands.totalRMS > 0 ? 20.0 * log10(Double(bands.totalRMS)) : -100
+                    await MainActor.run { liveNoiseType = noiseType.rawValue; liveDB = db }
+
+                    if noiseType != .quiet && conf > 0.4 {
+                        let now = Date()
+                        if now.timeIntervalSince(segStart) > 2 {
+                            let clipURL = appState.recordingManager.captureEventClip(
+                                eventId: UUID(), eventTime: now, sessionStart: segStart
+                            )
+                            let seg = NoiseSegment(
+                                sessionId: captureId, timestamp: segStart, endTime: now,
+                                noiseType: noiseType.rawValue, confidence: Double(conf),
+                                energyDB: db, audioClipURL: clipURL
+                            )
+                            let context = appState.persistence.newBackgroundContext()
+                            context.insert(SDNoiseSegment(
+                                id: seg.id, sessionId: seg.sessionId, timestamp: seg.timestamp,
+                                endTime: seg.endTime, noiseType: seg.noiseType, confidence: seg.confidence,
+                                energyDB: seg.energyDB, audioClipPath: clipURL?.path
+                            ))
+                            try? context.save()
+                            await MainActor.run { segments.append(seg) }
+                            segStart = now
+                        }
+                    } else { segStart = Date() }
+                }
+            } catch {
+                await MainActor.run { isCapturing = false }
+            }
+            appState.captureService.stopCapture()
+            appState.noiseCaptureRecorder.stopCapture()
+            await MainActor.run {
+                captures = appState.noiseCaptureRecorder.allCaptures()
+                waveformAmps = appState.noiseCaptureRecorder.amplitudes
+            }
+        }
+    }
+
+    private func stopCapture() {
+        isCapturing = false
+        captureTask?.cancel()
+        captureTask = nil
     }
 
     private func loadSegments() async {
-        var sessionId = appState.activeSession?.id
-        if sessionId == nil, let profileId = appState.activeProfile?.id {
-            sessionId = (try? await appState.sessionRepo.getLatestSession(profileId: profileId))?.id
-        }
-        guard let sessionId else { return }
         let context = appState.persistence.newBackgroundContext()
-        let predicate = #Predicate<SDNoiseSegment> { $0.sessionId == sessionId }
-        let descriptor = FetchDescriptor(predicate: predicate, sortBy: [SortDescriptor(\.timestamp)])
+        let descriptor = FetchDescriptor<SDNoiseSegment>(sortBy: [SortDescriptor(\.timestamp, order: .reverse)])
         let sdSegments = (try? context.fetch(descriptor)) ?? []
         await MainActor.run {
-            segments = sdSegments.map { sd in
+            segments = sdSegments.prefix(200).map { sd in
                 NoiseSegment(id: sd.id, sessionId: sd.sessionId, timestamp: sd.timestamp,
                              endTime: sd.endTime, noiseType: sd.noiseType, confidence: sd.confidence,
                              energyDB: sd.energyDB, audioClipURL: sd.audioClipPath.flatMap { URL(fileURLWithPath: $0) },
@@ -198,7 +342,7 @@ struct NoiseAnalysisView: View {
         }
     }
 
-    private func saveSegment(_ seg: NoiseSegment) async {
+    private func saveAndRetrain(_ seg: NoiseSegment) async {
         let context = appState.persistence.newBackgroundContext()
         let predicate = #Predicate<SDNoiseSegment> { $0.id == seg.id }
         if let existing = try? context.fetch(FetchDescriptor(predicate: predicate)).first {
@@ -207,89 +351,20 @@ struct NoiseAnalysisView: View {
             existing.userLabel = seg.userLabel
             try? context.save()
         }
-    }
 
-    private func startLiveCapture() {
-        isLiveCapturing = true
-        captureTask = Task {
-            do {
-                if !appState.micPermissionGranted { await appState.requestMicPermission() }
-                guard appState.micPermissionGranted else { return }
-                try await appState.captureService.startCapture()
-                let separator = NoiseSeparatorBridge()
-                let stream = appState.captureService.audioStream
-                var segStart = Date()
-
-                for await frame in stream {
-                    guard isLiveCapturing else { break }
-                    separator.updateNoiseFloor(samples: frame.samples)
-                    let (noiseType, conf) = separator.classifyNoise(samples: frame.samples)
-                    let bands = separator.computeBandEnergy(samples: frame.samples)
-                    let db = bands.totalRMS > 0 ? 20.0 * log10(Double(bands.totalRMS)) : -100
-
-                    await MainActor.run {
-                        liveNoiseType = noiseType.rawValue
-                        liveDB = db
-                    }
-
-                    if noiseType != .quiet && conf > 0.4 {
-                        let now = Date()
-                        if now.timeIntervalSince(segStart) > 2 {
-                            let seg = NoiseSegment(
-                                sessionId: appState.activeSession?.id ?? UUID(),
-                                timestamp: segStart, endTime: now,
-                                noiseType: noiseType.rawValue, confidence: Double(conf), energyDB: db
-                            )
-                            let context = appState.persistence.newBackgroundContext()
-                            context.insert(SDNoiseSegment(
-                                id: seg.id, sessionId: seg.sessionId, timestamp: seg.timestamp,
-                                endTime: seg.endTime, noiseType: seg.noiseType, confidence: seg.confidence,
-                                energyDB: seg.energyDB
-                            ))
-                            try? context.save()
-                            await MainActor.run { segments.append(seg) }
-                            segStart = now
-                        }
-                    } else {
-                        segStart = Date()
-                    }
-                }
-            } catch {
-                await MainActor.run { isLiveCapturing = false }
-            }
-            appState.captureService.stopCapture()
-        }
-    }
-
-    private func stopLiveCapture() {
-        isLiveCapturing = false
-        captureTask?.cancel()
-        captureTask = nil
-        appState.captureService.stopCapture()
-    }
-
-    private func exportMLTrainingData() {
-        let confirmed = segments.filter { $0.isConfirmed }
-        guard !confirmed.isEmpty else { return }
-
-        var csv = "timestamp,noise_type,confidence,energy_db,user_label\n"
-        for seg in confirmed {
-            let ts = ISO8601DateFormatter().string(from: seg.timestamp)
-            csv += "\(ts),\(seg.displayType),\(seg.confidence),\(seg.energyDB),\(seg.userLabel ?? "")\n"
-        }
-
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.commaSeparatedText]
-        panel.nameFieldStringValue = "noise_training_data.csv"
-        panel.begin { response in
-            if response == .OK, let url = panel.url {
-                try? csv.write(to: url, atomically: true, encoding: .utf8)
-            }
+        if seg.isConfirmed {
+            let features: [String: Double] = [
+                "spectral_centroid": 0, "spectral_rolloff": 0,
+                "spectral_flatness": 0, "zero_crossing_rate": 0,
+                "rms_energy": pow(10, seg.energyDB / 20)
+            ]
+            appState.mlRetrainer.addConfirmedSample(noiseType: seg.displayType, features: features)
         }
     }
 }
 
 struct NoiseSegmentEditorView: View {
+    @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
     @State var segment: NoiseSegment
     let onSave: (NoiseSegment) -> Void
@@ -306,6 +381,26 @@ struct NoiseSegmentEditorView: View {
     var body: some View {
         VStack(spacing: AppSpacing.lg) {
             Text(L10n.editNoiseSegment).font(AppTypography.title).foregroundStyle(AppColors.textPrimary)
+
+            if let url = segment.audioClipURL {
+                HStack {
+                    Button {
+                        appState.audioPlayer.toggle(url: url, eventId: segment.id)
+                    } label: {
+                        Image(systemName: appState.audioPlayer.playingEventId == segment.id ? "stop.circle.fill" : "play.circle.fill")
+                            .font(.system(size: 28)).foregroundStyle(AppColors.primary)
+                    }
+                    .buttonStyle(.plain)
+                    if appState.audioPlayer.playingEventId == segment.id {
+                        ProgressView(value: appState.audioPlayer.duration > 0 ? appState.audioPlayer.currentTime / appState.audioPlayer.duration : 0)
+                            .tint(AppColors.primary)
+                    } else {
+                        RoundedRectangle(cornerRadius: 2).fill(AppColors.surfaceLight).frame(height: 4)
+                    }
+                }
+                .padding(AppSpacing.cardPadding).background(AppColors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: AppSpacing.cardCornerRadius))
+            }
 
             VStack(alignment: .leading, spacing: AppSpacing.sm) {
                 Text(L10n.eventTypeLabel).font(AppTypography.caption).foregroundStyle(AppColors.textSecondary)
@@ -325,11 +420,6 @@ struct NoiseSegmentEditorView: View {
             }
             .padding(AppSpacing.cardPadding).background(AppColors.surface)
             .clipShape(RoundedRectangle(cornerRadius: AppSpacing.cardCornerRadius))
-
-            HStack(spacing: AppSpacing.sm) {
-                Text(segment.timestamp, style: .time).font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
-                Text(String(format: "%.0f dB", segment.energyDB)).font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
-            }
 
             HStack(spacing: AppSpacing.md) {
                 Button(L10n.cancel) { dismiss() }.buttonStyle(.bordered)

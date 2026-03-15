@@ -21,6 +21,8 @@ final class AppState {
     let recordingManager: AudioRecordingManager
     let audioPlayer: AudioPlayerService
     let roomRepo: RoomRepository
+    let noiseCaptureRecorder: NoiseCaptureRecorder
+    let mlRetrainer: MLAutoRetrainer
 
     var activeSession: SleepSession?
     var activeProfile: UserProfile?
@@ -57,6 +59,8 @@ final class AppState {
         self.recordingManager = AudioRecordingManager()
         self.audioPlayer = AudioPlayerService()
         self.roomRepo = RoomRepository(persistence: persistence)
+        self.noiseCaptureRecorder = NoiseCaptureRecorder()
+        self.mlRetrainer = MLAutoRetrainer()
 
         Task { await loadActiveProfile() }
         checkMicPermission()

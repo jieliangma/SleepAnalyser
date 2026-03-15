@@ -35,6 +35,7 @@
 		D7935C63743319F78C540479 = {isa = PBXBuildFile; fileRef = 0F8A8D6D2431979C138C5810; };
 		4CAE5E71AB247DAFCE3085A4 = {isa = PBXBuildFile; fileRef = 793769AAD730A1719AE514EA; };
 		47101913D83863F72396B2FF = {isa = PBXBuildFile; fileRef = 3B8461338CCD999E7747BAE9; };
+		1803DC2BBE6742C8E0CD000C = {isa = PBXBuildFile; fileRef = A06ACB84056AF6621EFBF917; };
 		6BA292A15E954C07817970C9 = {isa = PBXBuildFile; fileRef = D3330DEE581E8F3D519EAF5A; };
 		6F10FD0374A1639EDA2DE8FD = {isa = PBXBuildFile; fileRef = 548DFC1CBFD78E53489219C6; };
 		97B4B64BF89473405F33FD9C = {isa = PBXBuildFile; fileRef = BAA4393ACD1EB3732B2F3413; };
@@ -97,6 +98,7 @@
 		2A87866FF6D52A12485E5B63 = {isa = PBXBuildFile; fileRef = 23FD7DA3FFAF92C2175F9461; };
 		C8D6EF6E8ECCAF88FBA6D046 = {isa = PBXBuildFile; fileRef = 6C88D8C0CCE7C64E62B4435A; };
 		D3710A8E8B9AF91531389B84 = {isa = PBXBuildFile; fileRef = 609D7C7D736C75864126B8D2; };
+		A2FFFC26484655CFD858169B = {isa = PBXBuildFile; fileRef = DF61E8404BB59964F2E5F0E3; };
 		C4383DB1B69AC073C7544967 = {isa = PBXBuildFile; fileRef = 3C420E3FEB304391BF44BB7B; };
 		708D27ED098C3DEDAB5612B6 = {isa = PBXBuildFile; fileRef = EC2B4CCCD2BC27884A735175; };
 		ACCF755F1B37FBFC1A909D67 = {isa = PBXBuildFile; fileRef = C30C5E8E87277A7BEE4FBD9F; };
@@ -190,6 +192,7 @@
 		0F8A8D6D2431979C138C5810 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RingBuffer.swift"; sourceTree = "<group>"; };
 		793769AAD730A1719AE514EA = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioPlayerService.swift"; sourceTree = "<group>"; };
 		3B8461338CCD999E7747BAE9 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioRecordingManager.swift"; sourceTree = "<group>"; };
+		A06ACB84056AF6621EFBF917 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoiseCaptureRecorder.swift"; sourceTree = "<group>"; };
 		D3330DEE581E8F3D519EAF5A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FeatureVectorDTO.swift"; sourceTree = "<group>"; };
 		548DFC1CBFD78E53489219C6 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "InferenceOutputDTO.swift"; sourceTree = "<group>"; };
 		BAA4393ACD1EB3732B2F3413 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EventMapper.swift"; sourceTree = "<group>"; };
@@ -252,6 +255,7 @@
 		23FD7DA3FFAF92C2175F9461 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ConfidenceSmoother.swift"; sourceTree = "<group>"; };
 		6C88D8C0CCE7C64E62B4435A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HMMPostProcessor.swift"; sourceTree = "<group>"; };
 		609D7C7D736C75864126B8D2 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepCycleConstraintEngine.swift"; sourceTree = "<group>"; };
+		DF61E8404BB59964F2E5F0E3 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MLAutoRetrainer.swift"; sourceTree = "<group>"; };
 		3C420E3FEB304391BF44BB7B = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DashboardView.swift"; sourceTree = "<group>"; };
 		EC2B4CCCD2BC27884A735175 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MenuBarView.swift"; sourceTree = "<group>"; };
 		C30C5E8E87277A7BEE4FBD9F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoiseAnalysisView.swift"; sourceTree = "<group>"; };
@@ -423,7 +427,7 @@
 		};
 		C8F9D9949E4D4D36C52DF9CB = {
 			isa = PBXGroup;
-			children = (793769AAD730A1719AE514EA, 3B8461338CCD999E7747BAE9);
+			children = (793769AAD730A1719AE514EA, 3B8461338CCD999E7747BAE9, A06ACB84056AF6621EFBF917);
 			path = "Recording";
 			sourceTree = "<group>";
 		};
@@ -566,7 +570,7 @@
 		};
 		EF6A5F926DE3CABCF64ACB38 = {
 			isa = PBXGroup;
-			children = (497170478C6722B3A067BD3E, 62608158A5C50D15F9437367);
+			children = (497170478C6722B3A067BD3E, 62608158A5C50D15F9437367, FAF00E625278A13BCA69DCCE);
 			path = "ML";
 			sourceTree = "<group>";
 		};
@@ -585,6 +589,12 @@
 			isa = PBXGroup;
 			children = (23FD7DA3FFAF92C2175F9461, 6C88D8C0CCE7C64E62B4435A, 609D7C7D736C75864126B8D2);
 			path = "Temporal";
+			sourceTree = "<group>";
+		};
+		FAF00E625278A13BCA69DCCE = {
+			isa = PBXGroup;
+			children = (DF61E8404BB59964F2E5F0E3);
+			path = "Training";
 			sourceTree = "<group>";
 		};
 		93A4E542157A2B1ECEBE332A = {
@@ -892,6 +902,7 @@
 				D7935C63743319F78C540479,
 				4CAE5E71AB247DAFCE3085A4,
 				47101913D83863F72396B2FF,
+				1803DC2BBE6742C8E0CD000C,
 				6BA292A15E954C07817970C9,
 				6F10FD0374A1639EDA2DE8FD,
 				97B4B64BF89473405F33FD9C,
@@ -954,6 +965,7 @@
 				2A87866FF6D52A12485E5B63,
 				C8D6EF6E8ECCAF88FBA6D046,
 				D3710A8E8B9AF91531389B84,
+				A2FFFC26484655CFD858169B,
 				C4383DB1B69AC073C7544967,
 				708D27ED098C3DEDAB5612B6,
 				ACCF755F1B37FBFC1A909D67,
