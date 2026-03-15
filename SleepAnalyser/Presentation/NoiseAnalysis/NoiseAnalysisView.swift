@@ -127,10 +127,12 @@ struct NoiseAnalysisView: View {
                     guard !amps.isEmpty else { return }
 
                     let maxAmp = amps.max() ?? 1
-                    let scale: Float = maxAmp > 0 ? 1.0 / maxAmp : 1.0
+                    let ampScale: Float = maxAmp > 0 ? 1.0 / maxAmp : 1.0
                     let totalDur = appState.audioPlayer.duration > 0
                         ? appState.audioPlayer.duration
                         : Double(amps.count) * 0.3
+                    let maxLayer = (segs.map(\.layer).max() ?? 0) + 1
+                    let bandH = h / Double(max(maxLayer, 1))
 
                     for seg in segs {
                         let t0 = seg.timestamp.timeIntervalSince(capture.date)
@@ -138,28 +140,38 @@ struct NoiseAnalysisView: View {
                         guard t1 > 0, t0 < totalDur else { continue }
                         let x1 = max(0, t0 / totalDur * w)
                         let x2 = min(w, t1 / totalDur * w)
+                        let y = Double(seg.layer) * bandH
                         context.fill(
-                            Path(CGRect(x: x1, y: 0, width: x2 - x1, height: h)),
-                            with: .color(noiseColor(seg.noiseType).opacity(0.12))
+                            Path(CGRect(x: x1, y: y, width: x2 - x1, height: bandH)),
+                            with: .color(noiseColor(seg.noiseType).opacity(0.18))
                         )
                     }
 
                     let pixelW = w / Double(amps.count)
-                    var path = Path()
                     for (i, amp) in amps.enumerated() {
                         let x = Double(i) * pixelW
-                        let norm = Double(amp * scale)
+                        let norm = Double(amp * ampScale)
                         let barH = norm * h * 0.9
-                        path.addRect(CGRect(x: x, y: midY - barH / 2, width: max(pixelW, 1), height: max(barH, 0.5)))
+                        let sampleTime = Double(i) / Double(amps.count) * totalDur
+                        let dominantSeg = segs.first { seg in
+                            let t0 = seg.timestamp.timeIntervalSince(capture.date)
+                            let t1 = seg.endTime.timeIntervalSince(capture.date)
+                            return seg.layer == 0 && sampleTime >= t0 && sampleTime < t1
+                        }
+                        let barColor = dominantSeg != nil
+                            ? noiseColor(dominantSeg!.noiseType).opacity(0.7)
+                            : AppColors.primary.opacity(0.45)
+                        var barPath = Path()
+                        barPath.addRect(CGRect(x: x, y: midY - barH / 2, width: max(pixelW, 1), height: max(barH, 0.5)))
+                        context.fill(barPath, with: .color(barColor))
                     }
-                    context.fill(path, with: .color(AppColors.primary.opacity(0.6)))
 
                     if appState.audioPlayer.isPlaying && appState.audioPlayer.playingEventId == capture.id && appState.audioPlayer.duration > 0 {
                         let px = appState.audioPlayer.currentTime / appState.audioPlayer.duration * w
                         var cursor = Path()
                         cursor.move(to: CGPoint(x: px, y: 0))
                         cursor.addLine(to: CGPoint(x: px, y: h))
-                        context.stroke(cursor, with: .color(AppColors.error), lineWidth: 1)
+                        context.stroke(cursor, with: .color(.white), lineWidth: 1)
                     }
                 }
                 .frame(width: totalW, height: 90)
