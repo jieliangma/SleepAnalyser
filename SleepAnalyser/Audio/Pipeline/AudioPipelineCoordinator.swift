@@ -18,6 +18,8 @@ struct RealtimeAudioFrame: Sendable {
 final class AudioPipelineCoordinator: @unchecked Sendable {
     private let preprocessor: AudioPreprocessor
     private let noiseSuppressor: NoiseSuppressor
+    private let breathFilter: BandpassBreathFilter
+    private let noiseSeparator: NoiseSeparatorBridge
     private let featureExtractor: SpectralFeatureExtractor
     private let breathingEstimator: BreathingRhythmEstimator
     private let snoreDetector: SnoreDetector
@@ -42,6 +44,8 @@ final class AudioPipelineCoordinator: @unchecked Sendable {
 
     init(preprocessor: AudioPreprocessor = AudioPreprocessor(),
          noiseSuppressor: NoiseSuppressor = NoiseSuppressor(),
+         breathFilter: BandpassBreathFilter = BandpassBreathFilter(),
+         noiseSeparator: NoiseSeparatorBridge = NoiseSeparatorBridge(),
          featureExtractor: SpectralFeatureExtractor = SpectralFeatureExtractor(),
          breathingEstimator: BreathingRhythmEstimator = BreathingRhythmEstimator(),
          snoreDetector: SnoreDetector = SnoreDetector(),
@@ -51,6 +55,8 @@ final class AudioPipelineCoordinator: @unchecked Sendable {
          metrics: PipelineMetrics = PipelineMetrics()) {
         self.preprocessor = preprocessor
         self.noiseSuppressor = noiseSuppressor
+        self.breathFilter = breathFilter
+        self.noiseSeparator = noiseSeparator
         self.featureExtractor = featureExtractor
         self.breathingEstimator = breathingEstimator
         self.snoreDetector = snoreDetector

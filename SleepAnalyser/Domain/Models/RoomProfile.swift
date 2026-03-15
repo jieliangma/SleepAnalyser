@@ -1,6 +1,6 @@
 import Foundation
 
-struct RoomProfile: Identifiable, Codable, Sendable {
+struct RoomProfile: Identifiable, Codable, Sendable, Hashable {
     let id: UUID
     let userProfileId: UUID
     var name: String

@@ -66,6 +66,28 @@ final class NoiseCaptureRecorder: @unchecked Sendable {
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
 
+    func extractClip(from captureDir: URL, startTime: TimeInterval, endTime: TimeInterval, clipId: UUID) -> URL? {
+        guard let sourceURL = audioURL(for: captureDir) else { return nil }
+        let clipURL = captureDir.appendingPathComponent("clip_\(clipId.uuidString.prefix(8)).caf")
+
+        guard let sourceFile = try? AVAudioFile(forReading: sourceURL) else { return nil }
+        let sr = sourceFile.processingFormat.sampleRate
+        let startFrame = AVAudioFramePosition(startTime * sr)
+        let frameCount = AVAudioFrameCount((endTime - startTime) * sr)
+        guard frameCount > 0, startFrame >= 0, startFrame + AVAudioFramePosition(frameCount) <= sourceFile.length else { return nil }
+
+        sourceFile.framePosition = startFrame
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: sourceFile.processingFormat, frameCapacity: frameCount) else { return nil }
+        do {
+            try sourceFile.read(into: buffer, frameCount: frameCount)
+            let outFile = try AVAudioFile(forWriting: clipURL, settings: sourceFile.fileFormat.settings)
+            try outFile.write(from: buffer)
+            return clipURL
+        } catch {
+            return nil
+        }
+    }
+
     func loadAmplitudes(from captureDir: URL) -> [Float] {
         let url = captureDir.appendingPathComponent("amplitudes.bin")
         guard let data = try? Data(contentsOf: url) else { return [] }

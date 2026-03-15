@@ -8,7 +8,6 @@ struct RoomManagementView: View {
     @State private var renamingRoom: RoomProfile?
     @State private var renameText = ""
     @State private var roomToDelete: RoomProfile?
-    @State private var showCalibration = false
     @State private var calibratingRoom: RoomProfile?
 
     var body: some View {
@@ -40,15 +39,15 @@ struct RoomManagementView: View {
         .task { await loadRooms() }
         .sheet(isPresented: $showAddRoom) { addRoomSheet }
         .sheet(item: $renamingRoom) { room in renameSheet(room) }
-        .sheet(isPresented: $showCalibration) {
-            if calibratingRoom != nil {
-                CalibrationView(room: $calibratingRoom, onComplete: { updated in
-                    Task {
-                        if let updated { try? await appState.roomRepo.updateRoom(updated) }
-                        await loadRooms()
-                    }
-                })
-            }
+        .sheet(item: $calibratingRoom) { _ in
+            CalibrationView(room: $calibratingRoom, onComplete: { updated in
+                Task {
+                    if let updated { try? await appState.roomRepo.updateRoom(updated) }
+                    await loadRooms()
+                    await appState.loadActiveRoom()
+                    calibratingRoom = nil
+                }
+            })
         }
         .alert(L10n.profileDeleteTitle, isPresented: .init(
             get: { roomToDelete != nil }, set: { if !$0 { roomToDelete = nil } }
@@ -124,7 +123,6 @@ struct RoomManagementView: View {
 
             Button {
                 calibratingRoom = room
-                showCalibration = true
             } label: {
                 Image(systemName: "waveform.badge.mic").font(.system(size: 15)).foregroundStyle(AppColors.primary)
             }

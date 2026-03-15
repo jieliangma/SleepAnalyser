@@ -82,7 +82,6 @@ private struct AudioSection: View {
     @Environment(AppState.self) private var appState
     @State private var selectedDeviceUID: String = ""
     @State private var sensitivity: Double = 1.0
-    @State private var showCalibration = false
 
     var body: some View {
         SettingsCard(title: L10n.audioInput, icon: "mic.fill") {
@@ -129,47 +128,8 @@ private struct AudioSection: View {
                 }
             }
         }
-
-        SettingsCard(title: L10n.calibrateRoom, icon: "waveform.badge.mic") {
-            VStack(alignment: .leading, spacing: AppSpacing.md) {
-                if let cal = appState.calibration {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            settingsRow(L10n.calibrationNoiseFloor, value: String(format: "%.1f dB", cal.baselineNoiseLevel))
-                            settingsRow(L10n.calibrationGain, value: String(format: "%.2fx", cal.micGainFactor))
-                        }
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: 4) {
-                            Text(L10n.calibrationLastDate).font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
-                            Text(cal.lastCalibratedAt, style: .relative).font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
-                        }
-                    }
-                } else {
-                    Text(L10n.calibrationNone)
-                        .font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
-                }
-
-                Button {
-                    showCalibration = true
-                } label: {
-                    Label(appState.calibration == nil ? L10n.calibrationStart : L10n.calibrationRecalibrate, systemImage: "waveform.badge.mic")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(AppColors.primary)
-                        .padding(.horizontal, 14).padding(.vertical, 8)
-                        .background(AppColors.primary.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-                .buttonStyle(.plain)
-            }
-        }
         .onAppear {
             selectedDeviceUID = appState.activeProfile?.preferredInputDeviceUID ?? appState.deviceManager.availableDevices.first?.id ?? ""
-            if let profileId = appState.activeProfile?.id {
-                Task { appState.calibration = try? await appState.profileRepo.getCalibration(profileId: profileId) }
-            }
-        }
-        .sheet(isPresented: $showCalibration) {
-            CalibrationView()
         }
     }
 

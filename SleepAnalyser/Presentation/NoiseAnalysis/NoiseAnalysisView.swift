@@ -507,7 +507,9 @@ struct NoiseAnalysisView: View {
         segments.append(seg)
         segCache[captureId, default: []].append(seg)
 
-        if let clipURL = appState.noiseCaptureRecorder.audioURL(for: cap.directoryURL) {
+        if let clipURL = appState.noiseCaptureRecorder.extractClip(
+            from: cap.directoryURL, startTime: t0, endTime: t1, clipId: seg.id
+        ) {
             appState.noiseTypeManager.addSoundClip(to: manualTypeName, url: clipURL)
         }
 
