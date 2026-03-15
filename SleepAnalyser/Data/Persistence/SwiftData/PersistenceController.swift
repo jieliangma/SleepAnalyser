@@ -22,6 +22,15 @@ final class PersistenceController: @unchecked Sendable {
         do {
             container = try ModelContainer(for: schema, configurations: [config])
         } catch {
+            if !inMemory {
+                Self.deleteStoreFiles()
+                do {
+                    container = try ModelContainer(for: schema, configurations: [config])
+                    return
+                } catch {
+                    fatalError("Failed to create ModelContainer after reset: \(error)")
+                }
+            }
             fatalError("Failed to create ModelContainer: \(error)")
         }
     }
@@ -33,5 +42,15 @@ final class PersistenceController: @unchecked Sendable {
 
     func newBackgroundContext() -> ModelContext {
         ModelContext(container)
+    }
+
+    private static func deleteStoreFiles() {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let storeBase = appSupport.appendingPathComponent("default.store")
+        for suffix in ["", "-wal", "-shm"] {
+            let url = storeBase.appendingPathExtension(suffix.isEmpty ? "" : String(suffix.dropFirst()))
+            let path = suffix.isEmpty ? storeBase.path : storeBase.path + suffix
+            try? FileManager.default.removeItem(atPath: path)
+        }
     }
 }
