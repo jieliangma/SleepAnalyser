@@ -100,12 +100,21 @@ final class AudioPipelineCoordinator: @unchecked Sendable {
         let processed = preprocessor.process(frame: frame)
         let suppressed = noiseSuppressor.suppress(processed.samples)
 
+        noiseSeparator.updateNoiseFloor(samples: suppressed)
+        let separation = noiseSeparator.separate(input: suppressed)
+        let foreground = separation.foreground
+
         var rms: Float = 0
-        if !suppressed.isEmpty {
-            vDSP_rmsqv(suppressed, 1, &rms, vDSP_Length(suppressed.count))
+        if !foreground.isEmpty {
+            vDSP_rmsqv(foreground, 1, &rms, vDSP_Length(foreground.count))
         }
 
-        let isBreathPeak = detectBreathPeak(rms: rms)
+        let breathFiltered = breathFilter.filter(foreground)
+        var breathRMS: Float = 0
+        if !breathFiltered.isEmpty {
+            vDSP_rmsqv(breathFiltered, 1, &breathRMS, vDSP_Length(breathFiltered.count))
+        }
+        let isBreathPeak = detectBreathPeak(rms: breathRMS)
 
         realtimeContinuation?.yield(RealtimeAudioFrame(
             rmsLevel: rms,
@@ -115,12 +124,12 @@ final class AudioPipelineCoordinator: @unchecked Sendable {
 
         let processedForFeatures = ProcessedFrame(
             timestamp: processed.timestamp,
-            samples: suppressed,
+            samples: foreground,
             noiseLevel: processed.noiseLevel,
             isVoiceActivity: processed.isVoiceActivity
         )
 
-        epochBuffer.append(contentsOf: suppressed)
+        epochBuffer.append(contentsOf: foreground)
 
         var events: [AudioEvent] = []
 
@@ -157,14 +166,19 @@ final class AudioPipelineCoordinator: @unchecked Sendable {
             let epochData = Array(epochBuffer.prefix(epochSamples))
             epochBuffer = Array(epochBuffer.dropFirst(epochSamples))
 
+            let breathData = breathFilter.filter(epochData)
             let features = featureExtractor.extractFeatures(from: processedForFeatures)
-            let breathing = breathingEstimator.estimate(from: epochData)
+            let breathing = breathingEstimator.estimate(from: breathData)
 
+            let noiseLayers = noiseSeparator.decomposeMultiLayer(samples: suppressed)
             var contextFlags: [String] = []
             if !events.isEmpty { contextFlags.append("has_events") }
             if processed.noiseLevel > -20 { contextFlags.append("high_noise") }
             if roomCalibrated { contextFlags.append("room_calibrated") }
             if baselineRMS > 0.01 && rms > baselineRMS * 3 { contextFlags.append("above_baseline") }
+            for layer in noiseLayers {
+                contextFlags.append("noise_\(layer.type.rawValue)")
+            }
 
             let output = PipelineOutput(
                 timestamp: epochStart,

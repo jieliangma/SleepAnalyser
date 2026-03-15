@@ -250,9 +250,8 @@ struct NoiseAnalysisView: View {
                             let t1 = seg.endTime.timeIntervalSince(capture.date)
                             return seg.layer == 0 && sampleTime >= t0 && sampleTime < t1
                         }
-                        let barColor = dominantSeg != nil
-                            ? noiseColor(dominantSeg!.noiseType).opacity(0.75)
-                            : AppColors.primary.opacity(0.45)
+                        let barColor = dominantSeg.map { noiseColor($0.noiseType).opacity(0.75) }
+                            ?? AppColors.primary.opacity(0.45)
                         var p = Path()
                         p.addRect(CGRect(x: x, y: midY - barH / 2, width: 1, height: barH))
                         context.fill(p, with: .color(barColor))

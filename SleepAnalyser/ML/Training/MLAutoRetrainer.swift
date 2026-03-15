@@ -23,10 +23,11 @@ final class MLAutoRetrainer: @unchecked Sendable {
            var line = String(data: data, encoding: .utf8) {
             line += "\n"
             if FileManager.default.fileExists(atPath: file.path) {
-                if let handle = try? FileHandle(forWritingTo: file) {
-                    handle.seekToEndOfFile()
-                    handle.write(line.data(using: .utf8)!)
-                    handle.closeFile()
+                    if let handle = try? FileHandle(forWritingTo: file),
+                       let lineData = line.data(using: .utf8) {
+                        handle.seekToEndOfFile()
+                        handle.write(lineData)
+                        handle.closeFile()
                 }
             } else {
                 try? line.write(to: file, atomically: true, encoding: .utf8)
