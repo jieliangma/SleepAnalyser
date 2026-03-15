@@ -9,7 +9,7 @@ final class NoiseCaptureRecorder: @unchecked Sendable {
     private var sessionDir: URL?
     private(set) var amplitudes: [Float] = []
     private var frameCounter = 0
-    private let amplitudeRate = 5
+    private let amplitudeRate = 1
     private(set) var captureId: UUID?
     private(set) var startTime: Date?
 

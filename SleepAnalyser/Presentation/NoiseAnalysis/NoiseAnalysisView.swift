@@ -119,9 +119,13 @@ struct NoiseAnalysisView: View {
     // MARK: - Waveform
 
     private func waveformView(amps: [Float], segs: [NoiseSegment], capture: NoiseCaptureRecorder.CaptureInfo) -> some View {
-        GeometryReader { geo in
-            let totalW = max(geo.size.width, geo.size.width * zoomScale)
-            ScrollView(.horizontal, showsIndicators: false) {
+        let minW: CGFloat = 700
+        let naturalW = CGFloat(amps.count)
+        let baseW = max(minW, naturalW)
+
+        return GeometryReader { geo in
+            let totalW = max(baseW, baseW * zoomScale)
+            ScrollView(.horizontal, showsIndicators: true) {
                 Canvas { context, size in
                     let w = size.width, h = size.height, midY = h / 2
                     guard !amps.isEmpty else { return }
@@ -147,11 +151,10 @@ struct NoiseAnalysisView: View {
                         )
                     }
 
-                    let pixelW = w / Double(amps.count)
                     for (i, amp) in amps.enumerated() {
-                        let x = Double(i) * pixelW
+                        let x = Double(i) / Double(amps.count) * w
                         let norm = Double(amp * ampScale)
-                        let barH = norm * h * 0.9
+                        let barH = max(norm * h * 0.92, 0.5)
                         let sampleTime = Double(i) / Double(amps.count) * totalDur
                         let dominantSeg = segs.first { seg in
                             let t0 = seg.timestamp.timeIntervalSince(capture.date)
@@ -159,11 +162,11 @@ struct NoiseAnalysisView: View {
                             return seg.layer == 0 && sampleTime >= t0 && sampleTime < t1
                         }
                         let barColor = dominantSeg != nil
-                            ? noiseColor(dominantSeg!.noiseType).opacity(0.7)
+                            ? noiseColor(dominantSeg!.noiseType).opacity(0.75)
                             : AppColors.primary.opacity(0.45)
-                        var barPath = Path()
-                        barPath.addRect(CGRect(x: x, y: midY - barH / 2, width: max(pixelW, 1), height: max(barH, 0.5)))
-                        context.fill(barPath, with: .color(barColor))
+                        var p = Path()
+                        p.addRect(CGRect(x: x, y: midY - barH / 2, width: 1, height: barH))
+                        context.fill(p, with: .color(barColor))
                     }
 
                     if appState.audioPlayer.isPlaying && appState.audioPlayer.playingEventId == capture.id && appState.audioPlayer.duration > 0 {
@@ -174,19 +177,18 @@ struct NoiseAnalysisView: View {
                         context.stroke(cursor, with: .color(.white), lineWidth: 1)
                     }
                 }
-                .frame(width: totalW, height: 90)
+                .frame(width: totalW, height: 100)
                 .contentShape(Rectangle())
                 .onTapGesture { loc in
                     guard appState.audioPlayer.duration > 0, appState.audioPlayer.playingEventId == capture.id else { return }
-                    let frac = loc.x / totalW
-                    appState.audioPlayer.seek(to: frac * appState.audioPlayer.duration)
+                    appState.audioPlayer.seek(to: loc.x / totalW * appState.audioPlayer.duration)
                 }
                 .gesture(MagnificationGesture().onChanged { val in
                     zoomScale = max(1.0, min(10.0, val))
                 })
             }
         }
-        .frame(height: 90)
+        .frame(height: 100)
     }
 
     // MARK: - Label Row
