@@ -584,8 +584,6 @@ struct NoiseAnalysisView: View {
         for sd in existing { context.delete(sd) }
         try? context.save()
 
-        await MainActor.run { segCache[cap.id] = [] }
-
         let separator = NoiseSeparatorBridge()
         let sr = audioFile.processingFormat.sampleRate
         let frameSize: AVAudioFrameCount = 1024
@@ -625,7 +623,6 @@ struct NoiseAnalysisView: View {
         try? bgContext.save()
         await MainActor.run {
             segCache[cap.id] = newSegs
-            segments = segments.filter { $0.sessionId != cap.id } + newSegs
         }
     }
 
