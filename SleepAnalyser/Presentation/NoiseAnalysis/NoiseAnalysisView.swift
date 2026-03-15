@@ -88,20 +88,20 @@ struct NoiseAnalysisView: View {
     }
 
     private var liveWaveform: some View {
-        let amps = appState.noiseCaptureRecorder.amplitudes
+        let liveSegs = segCache[appState.noiseCaptureRecorder.captureId ?? UUID()] ?? []
         return VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Circle().fill(AppColors.error).frame(width: 6, height: 6)
                 Text(L10n.recording).font(AppTypography.caption).foregroundStyle(AppColors.error)
                 Spacer()
                 Text((NoiseTypeLabel(rawValue: liveNoiseType) ?? .unknown).displayName)
-                    .font(AppTypography.caption).foregroundStyle(AppColors.textSecondary)
+                    .font(.system(size: 11, weight: .medium)).foregroundStyle(noiseColor(liveNoiseType))
                 Text(String(format: "%.0f dB", liveDB))
                     .font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
             }
             .padding(.horizontal, AppSpacing.cardPadding)
 
-            TimelineView(.animation(minimumInterval: 0.15)) { _ in
+            TimelineView(.animation(minimumInterval: 0.12)) { _ in
                 Canvas { context, size in
                     let w = size.width, h = size.height, midY = h / 2
                     let liveAmps = appState.noiseCaptureRecorder.amplitudes
@@ -110,6 +110,24 @@ struct NoiseAnalysisView: View {
                     let s: Float = maxA > 0 ? 1.0 / maxA : 1
                     let visibleCount = min(liveAmps.count, Int(w))
                     let startIdx = max(0, liveAmps.count - visibleCount)
+                    let totalSamples = Double(liveAmps.count)
+                    let captureStart = appState.noiseCaptureRecorder.startTime ?? Date()
+                    let elapsed = Date().timeIntervalSince(captureStart)
+
+                    for seg in liveSegs {
+                        let t0 = seg.timestamp.timeIntervalSince(captureStart)
+                        let t1 = seg.endTime.timeIntervalSince(captureStart)
+                        guard elapsed > 0 else { continue }
+                        let visibleStart = Double(startIdx) / totalSamples * elapsed
+                        let visibleEnd = elapsed
+                        let sx = max(0, (t0 - visibleStart) / (visibleEnd - visibleStart) * w)
+                        let ex = min(w, (t1 - visibleStart) / (visibleEnd - visibleStart) * w)
+                        if ex > sx {
+                            context.fill(Path(CGRect(x: sx, y: 0, width: ex - sx, height: h)),
+                                         with: .color(noiseColor(seg.noiseType).opacity(0.15)))
+                        }
+                    }
+
                     for i in 0..<visibleCount {
                         let amp = liveAmps[startIdx + i]
                         let x = Double(i)
@@ -119,7 +137,25 @@ struct NoiseAnalysisView: View {
                         context.fill(p, with: .color(noiseColor(liveNoiseType).opacity(0.7)))
                     }
                 }
-                .frame(height: 70)
+                .frame(height: 80)
+            }
+
+            if !liveSegs.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 4) {
+                        ForEach(liveSegs.suffix(10)) { seg in
+                            HStack(spacing: 2) {
+                                RoundedRectangle(cornerRadius: 1).fill(noiseColor(seg.noiseType)).frame(width: 3, height: 12)
+                                Text((NoiseTypeLabel(rawValue: seg.noiseType) ?? .unknown).displayName)
+                                    .font(.system(size: 9)).foregroundStyle(AppColors.textSecondary)
+                            }
+                            .padding(.horizontal, 4).padding(.vertical, 2)
+                            .background(noiseColor(seg.noiseType).opacity(0.08))
+                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                        }
+                    }
+                    .padding(.horizontal, AppSpacing.cardPadding)
+                }
             }
         }
         .padding(.vertical, AppSpacing.sm)
@@ -138,6 +174,9 @@ struct NoiseAnalysisView: View {
                 Text(cap.date, format: .dateTime.year().month().day().weekday().hour().minute())
                     .font(AppTypography.headline).foregroundStyle(AppColors.textPrimary)
                 Spacer()
+                if !segs.isEmpty {
+                    noiseSummaryBadges(segs)
+                }
                 Text(formatSize(cap.size)).font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
                 Button {
                     if appState.audioPlayer.playingEventId == cap.id { appState.audioPlayer.stop() }
@@ -394,6 +433,21 @@ struct NoiseAnalysisView: View {
             }
         }
         .padding(.horizontal, AppSpacing.cardPadding).padding(.vertical, 6)
+    }
+
+    // MARK: - Summary Badges
+
+    private func noiseSummaryBadges(_ segs: [NoiseSegment]) -> some View {
+        let typeCounts = Dictionary(grouping: segs, by: \.noiseType).mapValues(\.count)
+        let sorted = typeCounts.sorted { $0.value > $1.value }.prefix(3)
+        return HStack(spacing: 3) {
+            ForEach(sorted, id: \.key) { type, count in
+                HStack(spacing: 2) {
+                    Circle().fill(noiseColor(type)).frame(width: 5, height: 5)
+                    Text("\(count)").font(.system(size: 9)).foregroundStyle(AppColors.textTertiary)
+                }
+            }
+        }
     }
 
     // MARK: - Manual Annotation
