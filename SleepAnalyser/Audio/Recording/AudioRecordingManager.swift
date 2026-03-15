@@ -9,6 +9,7 @@ final class AudioRecordingManager: @unchecked Sendable {
     private let sampleRate: Double = 16000.0
 
     private var currentSessionId: UUID?
+    private var currentSessionDir: URL?
     private var currentWriter: AudioFileWriter?
     private var segmentIndex: Int = 0
     private var samplesInSegment: Int = 0
@@ -20,6 +21,13 @@ final class AudioRecordingManager: @unchecked Sendable {
     private var frameCounter = 0
 
     var nightAmplitudes: [Float] { amplitudeSamples }
+
+    private static let directoryDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd_HHmm"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f
+    }()
 
     init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -35,8 +43,11 @@ final class AudioRecordingManager: @unchecked Sendable {
         frameCounter = 0
         ringBuffer = []
 
-        let sessionDir = storageDir.appendingPathComponent(sessionId.uuidString, isDirectory: true)
+        let dateStr = Self.directoryDateFormatter.string(from: Date())
+        let dirName = "\(dateStr)_\(sessionId.uuidString.prefix(8))"
+        let sessionDir = storageDir.appendingPathComponent(dirName, isDirectory: true)
         try FileManager.default.createDirectory(at: sessionDir, withIntermediateDirectories: true)
+        currentSessionDir = sessionDir
         try openNewSegment()
     }
 
@@ -81,6 +92,7 @@ final class AudioRecordingManager: @unchecked Sendable {
         currentWriter?.close()
         currentWriter = nil
         currentSessionId = nil
+        currentSessionDir = nil
     }
 
     func deleteClip(at url: URL) {
@@ -88,23 +100,34 @@ final class AudioRecordingManager: @unchecked Sendable {
     }
 
     func deleteNightRecording(sessionId: UUID) {
-        let sessionDir = storageDir.appendingPathComponent(sessionId.uuidString)
-        try? FileManager.default.removeItem(at: sessionDir)
+        if let dir = findSessionDir(sessionId) {
+            try? FileManager.default.removeItem(at: dir)
+        }
         let legacyFile = storageDir.appendingPathComponent("\(sessionId.uuidString)_full.caf")
         try? FileManager.default.removeItem(at: legacyFile)
     }
 
     func segmentURLs(for sessionId: UUID) -> [URL] {
-        let sessionDir = storageDir.appendingPathComponent(sessionId.uuidString)
-        guard let files = try? FileManager.default.contentsOfDirectory(at: sessionDir, includingPropertiesForKeys: nil) else {
-            let legacy = storageDir.appendingPathComponent("\(sessionId.uuidString)_full.caf")
-            return FileManager.default.fileExists(atPath: legacy.path) ? [legacy] : []
+        if let dir = findSessionDir(sessionId) {
+            let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
+            let segments = files.filter { $0.pathExtension == "caf" }.sorted { $0.lastPathComponent < $1.lastPathComponent }
+            if !segments.isEmpty { return segments }
         }
-        return files.filter { $0.pathExtension == "caf" }.sorted { $0.lastPathComponent < $1.lastPathComponent }
+        let legacy = storageDir.appendingPathComponent("\(sessionId.uuidString)_full.caf")
+        return FileManager.default.fileExists(atPath: legacy.path) ? [legacy] : []
     }
 
     func nightRecordingExists(for sessionId: UUID) -> Bool {
         !segmentURLs(for: sessionId).isEmpty
+    }
+
+    private func findSessionDir(_ sessionId: UUID) -> URL? {
+        let prefix = sessionId.uuidString.prefix(8)
+        guard let items = try? FileManager.default.contentsOfDirectory(at: storageDir, includingPropertiesForKeys: [.isDirectoryKey]) else { return nil }
+        return items.first { item in
+            let isDir = (try? item.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+            return isDir && item.lastPathComponent.contains(prefix)
+        }
     }
 
     func allRecordings() -> [(sessionId: String, url: URL, size: Int64, date: Date, segmentCount: Int)] {
@@ -116,14 +139,18 @@ final class AudioRecordingManager: @unchecked Sendable {
             let isDir = (try? item.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
 
             if isDir {
-                let sessionId = item.lastPathComponent
+                let dirName = item.lastPathComponent
                 let segments = (try? FileManager.default.contentsOfDirectory(at: item, includingPropertiesForKeys: nil))?
                     .filter { $0.pathExtension == "caf" } ?? []
                 guard !segments.isEmpty else { continue }
                 let totalSize = segments.reduce(Int64(0)) { sum, url in
                     sum + (Int64((try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0))
                 }
-                let date = (try? item.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? Date()
+                let datePart = String(dirName.prefix(15))
+                let date = Self.directoryDateFormatter.date(from: datePart)
+                    ?? (try? item.resourceValues(forKeys: [.creationDateKey]).creationDate)
+                    ?? Date()
+                let sessionId = dirName.contains("_") ? String(dirName.split(separator: "_").last ?? "") : dirName
                 results.append((sessionId, item, totalSize, date, segments.count))
             } else if item.lastPathComponent.hasSuffix("_full.caf") {
                 let sessionId = item.lastPathComponent.replacingOccurrences(of: "_full.caf", with: "")
@@ -137,8 +164,7 @@ final class AudioRecordingManager: @unchecked Sendable {
     }
 
     private func openNewSegment() throws {
-        guard let sessionId = currentSessionId else { return }
-        let sessionDir = storageDir.appendingPathComponent(sessionId.uuidString)
+        guard let sessionDir = currentSessionDir else { return }
         let filename = String(format: "seg_%04d.caf", segmentIndex)
         let url = sessionDir.appendingPathComponent(filename)
         currentWriter = try AudioFileWriter(url: url, sampleRate: sampleRate)
