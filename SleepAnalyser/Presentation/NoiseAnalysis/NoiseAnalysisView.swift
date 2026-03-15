@@ -173,7 +173,7 @@ struct NoiseAnalysisView: View {
         let segs = segCache[cap.id] ?? []
         let amps = ampCache[cap.id] ?? []
         let isThisPlaying = appState.audioPlayer.isPlaying && appState.audioPlayer.playingEventId == cap.id
-        let duration = captureDuration(cap)
+        let duration = cap.duration > 0 ? cap.duration : captureDuration(cap)
 
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: AppSpacing.sm) {
@@ -210,8 +210,7 @@ struct NoiseAnalysisView: View {
             .padding(.horizontal, AppSpacing.cardPadding).padding(.top, AppSpacing.sm).padding(.bottom, 4)
 
             waveformView(amps: amps, segs: segs, capture: cap)
-            labelRows(segs: segs, capture: cap, amps: amps)
-            confirmBar(capture: cap, segs: segs)
+            labelsAndConfirmRow(segs: segs, capture: cap, amps: amps)
         }
         .background(AppColors.surface)
         .clipShape(RoundedRectangle(cornerRadius: AppSpacing.cardCornerRadius))
@@ -320,33 +319,42 @@ struct NoiseAnalysisView: View {
 
     // MARK: - Label Row
 
-    private func labelRows(segs: [NoiseSegment], capture: NoiseCaptureRecorder.CaptureInfo, amps: [Float]) -> some View {
+    private func labelsAndConfirmRow(segs: [NoiseSegment], capture: NoiseCaptureRecorder.CaptureInfo, amps: [Float]) -> some View {
         var seen = Set<String>()
         let uniqueTypes = segs.compactMap { seg -> String? in
             guard !seen.contains(seg.noiseType) else { return nil }
             seen.insert(seg.noiseType)
             return seg.noiseType
         }
+        let hasUnconfirmed = segs.contains { !$0.isConfirmed }
 
-        return ScrollView(.horizontal, showsIndicators: true) {
-            HStack(spacing: 6) {
-                ForEach(uniqueTypes, id: \.self) { type in
-                    let typeLabel = NoiseTypeLabel(rawValue: type) ?? .unknown
-                    HStack(spacing: 3) {
-                        Circle().fill(noiseColor(type)).frame(width: 6, height: 6)
-                        Text(typeLabel.displayName)
-                            .font(.system(size: 10)).foregroundStyle(AppColors.textSecondary)
-                            .fixedSize()
-                    }
-                    .padding(.horizontal, 8).padding(.vertical, 3)
-                    .background(noiseColor(type).opacity(0.08))
-                    .clipShape(Capsule())
-                    .fixedSize()
+        return HStack(spacing: 6) {
+            ForEach(uniqueTypes, id: \.self) { type in
+                let typeLabel = NoiseTypeLabel(rawValue: type) ?? .unknown
+                HStack(spacing: 3) {
+                    Circle().fill(noiseColor(type)).frame(width: 6, height: 6)
+                    Text(typeLabel.displayName).font(.system(size: 10)).foregroundStyle(AppColors.textSecondary).fixedSize()
                 }
+                .padding(.horizontal, 8).padding(.vertical, 3)
+                .background(noiseColor(type).opacity(0.08))
+                .clipShape(Capsule()).fixedSize()
             }
-            .padding(.horizontal, AppSpacing.cardPadding)
+            Spacer()
+            if hasUnconfirmed {
+                Button {
+                    Task { await confirmAll(capture: capture) }
+                } label: {
+                    Label(L10n.confirmAllNoise, systemImage: "checkmark.circle.fill")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(AppColors.success)
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                        .background(AppColors.success.opacity(0.1))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .scrollIndicators(.visible)
+        .padding(.horizontal, AppSpacing.cardPadding).padding(.vertical, 6)
     }
 
     private struct MergedLabel: Identifiable {
@@ -384,29 +392,6 @@ struct NoiseAnalysisView: View {
             }
         }
         return result
-    }
-
-    private func confirmBar(capture: NoiseCaptureRecorder.CaptureInfo, segs: [NoiseSegment]) -> some View {
-        let unconfirmed = segs.filter { !$0.isConfirmed }
-        return Group {
-            if !unconfirmed.isEmpty {
-                HStack {
-                    Button {
-                        Task { await confirmAll(capture: capture) }
-                    } label: {
-                        Label(L10n.confirmAllNoise, systemImage: "checkmark.circle.fill")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(AppColors.success)
-                            .padding(.horizontal, 12).padding(.vertical, 5)
-                            .background(AppColors.success.opacity(0.1))
-                            .clipShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    Spacer()
-                }
-                .padding(.horizontal, AppSpacing.cardPadding).padding(.vertical, 4)
-            }
-        }
     }
 
     private func confirmAll(capture: NoiseCaptureRecorder.CaptureInfo) async {

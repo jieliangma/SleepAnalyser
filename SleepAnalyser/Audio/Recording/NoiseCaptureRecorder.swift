@@ -12,6 +12,7 @@ final class NoiseCaptureRecorder: @unchecked Sendable {
     private let amplitudeRate = 1
     private(set) var captureId: UUID?
     private(set) var startTime: Date?
+    private var totalSamplesWritten: Int = 0
 
     init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -25,6 +26,7 @@ final class NoiseCaptureRecorder: @unchecked Sendable {
         startTime = Date()
         amplitudes = []
         frameCounter = 0
+        totalSamplesWritten = 0
 
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd_HHmmss"
@@ -44,6 +46,7 @@ final class NoiseCaptureRecorder: @unchecked Sendable {
 
     func feedAudio(_ samples: [Float]) {
         writer?.write(samples)
+        totalSamplesWritten += samples.count
         frameCounter += 1
         if frameCounter % amplitudeRate == 0 {
             var rms: Float = 0
@@ -58,6 +61,15 @@ final class NoiseCaptureRecorder: @unchecked Sendable {
         if let dir = sessionDir {
             let ampData = amplitudes.withUnsafeBufferPointer { Data(buffer: $0) }
             try? ampData.write(to: dir.appendingPathComponent("amplitudes.bin"))
+
+            let duration = Double(totalSamplesWritten) / sampleRate
+            let metaURL = dir.appendingPathComponent("capture.json")
+            if var meta = (try? JSONSerialization.jsonObject(with: Data(contentsOf: metaURL))) as? [String: String] {
+                meta["duration"] = String(duration)
+                if let data = try? JSONSerialization.data(withJSONObject: meta) {
+                    try? data.write(to: metaURL)
+                }
+            }
         }
     }
 
@@ -99,6 +111,7 @@ final class NoiseCaptureRecorder: @unchecked Sendable {
         let directoryURL: URL
         let date: Date
         let size: Int64
+        let duration: TimeInterval
 
         static func == (lhs: CaptureInfo, rhs: CaptureInfo) -> Bool { lhs.id == rhs.id }
         func hash(into hasher: inout Hasher) { hasher.combine(id) }
@@ -116,7 +129,8 @@ final class NoiseCaptureRecorder: @unchecked Sendable {
                   let dateStr = meta["startDate"], let date = ISO8601DateFormatter().date(from: dateStr) else { return nil }
             let audioFile = item.appendingPathComponent("audio.caf")
             let size = Int64((try? FileManager.default.attributesOfItem(atPath: audioFile.path)[.size] as? Int) ?? 0)
-            return CaptureInfo(id: id, directoryURL: item, date: date, size: size)
+            let duration = Double(meta["duration"] ?? "0") ?? 0
+            return CaptureInfo(id: id, directoryURL: item, date: date, size: size, duration: duration)
         }.sorted { $0.date > $1.date }
     }
 
