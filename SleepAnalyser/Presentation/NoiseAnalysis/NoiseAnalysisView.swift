@@ -265,13 +265,11 @@ struct NoiseAnalysisView: View {
     // MARK: - Waveform
 
     private func waveformView(amps: [Float], segs: [NoiseSegment], capture: NoiseCaptureRecorder.CaptureInfo) -> some View {
-        let minW: CGFloat = 700
-        let naturalW = CGFloat(amps.count)
-        let baseW = max(minW, naturalW)
         let zoom = zoomScales[capture.id] ?? 1.0
 
         return GeometryReader { geo in
-            let totalW = max(baseW, baseW * zoom)
+            let baseW = geo.size.width
+            let totalW = baseW * zoom
             ScrollView(.horizontal, showsIndicators: true) {
                 Canvas { context, size in
                     let w = size.width, h = size.height, midY = h / 2
@@ -616,11 +614,8 @@ struct NoiseAnalysisView: View {
     }
 
     private func captureDuration(_ cap: NoiseCaptureRecorder.CaptureInfo) -> TimeInterval {
-        if let url = appState.noiseCaptureRecorder.audioURL(for: cap.directoryURL),
-           let file = try? AVAudioFile(forReading: url),
-           file.processingFormat.sampleRate > 0 {
-            return Double(file.length) / file.processingFormat.sampleRate
-        }
+        if cap.duration > 0 { return cap.duration }
+        if cap.size > 0 { return Double(cap.size) / 4.0 / 16000.0 }
         let amps = ampCache[cap.id] ?? []
         if !amps.isEmpty { return Double(amps.count) / 15.0 }
         return 0

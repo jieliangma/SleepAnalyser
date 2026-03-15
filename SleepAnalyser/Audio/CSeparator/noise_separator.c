@@ -203,26 +203,39 @@ ns_noise_type_t ns_classify_noise(
 {
     float total_low = bands->sub_bass + bands->bass;
     float total_mid = bands->low_mid + bands->mid;
-    float total = total_low + total_mid + bands->high_mid + bands->presence + bands->brilliance;
+    float total_high = bands->high_mid + bands->presence + bands->brilliance;
+    float total = total_low + total_mid + total_high;
     if (total < 1e-6f) return NS_NOISE_QUIET;
     float low_ratio = total_low / total;
+    float mid_ratio = total_mid / total;
+    float high_ratio = total_high / total;
 
+    /* Wind: sub-bass dominant, sustained, low crest */
     if (bands->sub_bass > bands->bass * 1.5f && low_ratio > 0.55f && crest_factor < 4.0f)
         return NS_NOISE_WIND;
 
+    /* Motorcycle: bass + low-mid harmonics, high crest */
     if (bands->low_mid > bands->mid && bands->bass > bands->high_mid * 1.5f && crest_factor > 3.0f)
         return NS_NOISE_MOTORCYCLE;
 
+    /* Tire noise (traffic): mid-range 500-2000Hz broadband, transient swell, not stationary */
+    if (mid_ratio > 0.3f && bands->mid > bands->bass && crest_factor > 2.5f && !is_stationary)
+        return NS_NOISE_TRAFFIC;
+
+    /* Engine/heavy traffic: bass dominant, sustained low rumble */
     if (bands->bass > bands->mid * 2.0f && low_ratio > 0.45f)
         return NS_NOISE_TRAFFIC;
 
+    /* HVAC: broadband low, stationary, low crest */
     if (low_ratio > 0.4f && crest_factor < 3.0f && is_stationary)
         return NS_NOISE_HVAC;
 
+    /* Speech/TV: mid dominant, high-mid present */
     if (bands->mid > total_low && bands->high_mid > bands->bass)
         return NS_NOISE_SPEECH;
 
-    if (bands->sub_bass > 0.01f && bands->total_rms > 0.02f && low_ratio > 0.5f)
+    /* Rain: sustained broadband, sub-bass present, stationary, low crest */
+    if (bands->sub_bass > 0.005f && bands->total_rms > 0.01f && is_stationary && crest_factor < 4.0f)
         return NS_NOISE_RAIN;
 
     if (bands->total_rms < 0.005f)

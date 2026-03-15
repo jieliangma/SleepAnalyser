@@ -129,7 +129,10 @@ final class NoiseCaptureRecorder: @unchecked Sendable {
                   let dateStr = meta["startDate"], let date = ISO8601DateFormatter().date(from: dateStr) else { return nil }
             let audioFile = item.appendingPathComponent("audio.caf")
             let size = Int64((try? FileManager.default.attributesOfItem(atPath: audioFile.path)[.size] as? Int) ?? 0)
-            let duration = Double(meta["duration"] ?? "0") ?? 0
+            var duration = Double(meta["duration"] ?? "0") ?? 0
+            if duration <= 0 && size > 0 {
+                duration = Double(size) / 4.0 / 16000.0
+            }
             return CaptureInfo(id: id, directoryURL: item, date: date, size: size, duration: duration)
         }.sorted { $0.date > $1.date }
     }
