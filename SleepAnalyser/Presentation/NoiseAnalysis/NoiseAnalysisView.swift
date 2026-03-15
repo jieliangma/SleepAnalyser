@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import AVFoundation
 
 struct NoiseAnalysisView: View {
     @Environment(AppState.self) private var appState
@@ -114,22 +115,6 @@ struct NoiseAnalysisView: View {
                     let captureId = appState.noiseCaptureRecorder.captureId ?? UUID()
                     let liveSegs = segCache[captureId] ?? []
 
-                    for seg in liveSegs {
-                        let t0 = seg.timestamp.timeIntervalSince(captureStart)
-                        let t1 = seg.endTime.timeIntervalSince(captureStart)
-                        guard elapsed > 0, t1 > 0 else { continue }
-                        let visibleStart = Double(startIdx) / Double(max(liveAmps.count, 1)) * elapsed
-                        let visibleEnd = elapsed
-                        let visibleSpan = visibleEnd - visibleStart
-                        guard visibleSpan > 0 else { continue }
-                        let sx = max(0, (t0 - visibleStart) / visibleSpan * w)
-                        let ex = min(w, (t1 - visibleStart) / visibleSpan * w)
-                        if ex > sx {
-                            context.fill(Path(CGRect(x: sx, y: 0, width: ex - sx, height: h)),
-                                         with: .color(noiseColor(seg.noiseType).opacity(0.15)))
-                        }
-                    }
-
                     for i in 0..<visibleCount {
                         let amp = liveAmps[startIdx + i]
                         let x = Double(i)
@@ -190,6 +175,12 @@ struct NoiseAnalysisView: View {
                     noiseSummaryBadges(segs)
                 }
                 Text(formatSize(cap.size)).font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
+                Button {
+                    Task { await reanalyzeCapture(cap) }
+                } label: {
+                    Image(systemName: "arrow.trianglehead.2.clockwise").font(.system(size: 12)).foregroundStyle(AppColors.primary)
+                }
+                .buttonStyle(.plain)
                 Button {
                     if appState.audioPlayer.playingEventId == cap.id { appState.audioPlayer.stop() }
                     appState.noiseCaptureRecorder.deleteCapture(cap)
@@ -353,19 +344,27 @@ struct NoiseAnalysisView: View {
     private func mergeAdjacentLabels(segs: [NoiseSegment], totalDur: Double, totalW: Double, captureDate: Date) -> [MergedLabel] {
         let sorted = segs.sorted { $0.timestamp < $1.timestamp }
         var result: [MergedLabel] = []
-        var lastEndX: Double = -100
 
         for seg in sorted {
             let t0 = seg.timestamp.timeIntervalSince(captureDate)
             let t1 = seg.endTime.timeIntervalSince(captureDate)
             let x = max(0, t0 / totalDur * totalW)
-            let segW = (t1 - t0) / totalDur * totalW
-            let typeLabel = NoiseTypeLabel(rawValue: seg.noiseType) ?? .unknown
+            let endX = t1 / totalDur * totalW
 
-            let labelX = x < lastEndX + 2 ? lastEndX + 2 : x
-            let w = max(20, segW)
-            result.append(MergedLabel(id: seg.id, segId: seg.id, noiseType: seg.noiseType, label: typeLabel.displayName, x: labelX, width: w))
-            lastEndX = labelX + w
+            if let lastIdx = result.lastIndex(where: { $0.noiseType == seg.noiseType }),
+               x - (result[lastIdx].x + result[lastIdx].width) < 30 {
+                result[lastIdx] = MergedLabel(
+                    id: result[lastIdx].id, segId: result[lastIdx].segId,
+                    noiseType: result[lastIdx].noiseType, label: result[lastIdx].label,
+                    x: result[lastIdx].x, width: endX - result[lastIdx].x
+                )
+            } else {
+                let typeLabel = NoiseTypeLabel(rawValue: seg.noiseType) ?? .unknown
+                result.append(MergedLabel(
+                    id: seg.id, segId: seg.id, noiseType: seg.noiseType,
+                    label: typeLabel.displayName, x: x, width: max(20, endX - x)
+                ))
+            }
         }
         return result
     }
@@ -534,6 +533,64 @@ struct NoiseAnalysisView: View {
         }
 
         manualSelectStart = nil; manualSelectEnd = nil; manualSelectCaptureId = nil
+    }
+
+    // MARK: - Re-analyze
+
+    private func reanalyzeCapture(_ cap: NoiseCaptureRecorder.CaptureInfo) async {
+        guard let audioURL = appState.noiseCaptureRecorder.audioURL(for: cap.directoryURL),
+              let audioFile = try? AVAudioFile(forReading: audioURL) else { return }
+
+        let captureId = cap.id
+        let context = appState.persistence.newBackgroundContext()
+        let predicate = #Predicate<SDNoiseSegment> { $0.sessionId == captureId }
+        let existing = (try? context.fetch(FetchDescriptor(predicate: predicate))) ?? []
+        for sd in existing { context.delete(sd) }
+        try? context.save()
+
+        await MainActor.run { segCache[cap.id] = [] }
+
+        let separator = NoiseSeparatorBridge()
+        let sr = audioFile.processingFormat.sampleRate
+        let frameSize: AVAudioFrameCount = 1024
+        let buffer = AVAudioPCMBuffer(pcmFormat: audioFile.processingFormat, frameCapacity: frameSize)!
+        var segStart = cap.date
+        var newSegs: [NoiseSegment] = []
+        let bgContext = appState.persistence.newBackgroundContext()
+
+        while audioFile.framePosition < audioFile.length {
+            do { try audioFile.read(into: buffer, frameCount: frameSize) } catch { break }
+            guard let channelData = buffer.floatChannelData else { break }
+            let samples = Array(UnsafeBufferPointer(start: channelData[0], count: Int(buffer.frameLength)))
+
+            separator.updateNoiseFloor(samples: samples)
+            let (noiseType, conf) = separator.classifyNoise(samples: samples)
+            let elapsed = Double(audioFile.framePosition) / sr
+            let frameTime = cap.date.addingTimeInterval(elapsed)
+
+            if noiseType != .quiet && conf > 0.3 && frameTime.timeIntervalSince(segStart) > 0.5 {
+                let seg = NoiseSegment(
+                    sessionId: cap.id, timestamp: segStart, endTime: frameTime,
+                    noiseType: noiseType.rawValue, confidence: Double(conf),
+                    energyDB: -30, layer: 0
+                )
+                bgContext.insert(SDNoiseSegment(
+                    id: seg.id, sessionId: seg.sessionId, timestamp: seg.timestamp,
+                    endTime: seg.endTime, noiseType: seg.noiseType, confidence: seg.confidence,
+                    energyDB: seg.energyDB, layer: 0
+                ))
+                newSegs.append(seg)
+                segStart = frameTime
+            } else if noiseType == .quiet {
+                segStart = frameTime
+            }
+        }
+
+        try? bgContext.save()
+        await MainActor.run {
+            segCache[cap.id] = newSegs
+            segments = segments.filter { $0.sessionId != cap.id } + newSegs
+        }
     }
 
     // MARK: - Helpers
