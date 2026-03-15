@@ -13,7 +13,12 @@ struct NoiseAnalysisView: View {
     @State private var captures: [NoiseCaptureRecorder.CaptureInfo] = []
     @State private var ampCache: [UUID: [Float]] = [:]
     @State private var segCache: [UUID: [NoiseSegment]] = [:]
-    @State private var zoomScale: CGFloat = 1.0
+    @State private var zoomScales: [UUID: CGFloat] = [:]
+    @State private var toolMode: [UUID: WaveformTool] = [:]
+    @State private var commandKeyDown = false
+    @State private var commandMonitor: Any?
+
+    enum WaveformTool { case select, pan }
     @State private var manualSelectStart: CGFloat?
     @State private var manualSelectEnd: CGFloat?
     @State private var manualSelectCaptureId: UUID?
@@ -38,6 +43,22 @@ struct NoiseAnalysisView: View {
         .task {
             captures = appState.noiseCaptureRecorder.allCaptures()
             await loadAllSegments()
+            commandMonitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged]) { event in
+                let cmd = event.modifierFlags.contains(.command)
+                if cmd != commandKeyDown {
+                    DispatchQueue.main.async { commandKeyDown = cmd }
+                    if !cmd {
+                        DispatchQueue.main.async {
+                            toolMode.removeAll()
+                            NSCursor.arrow.set()
+                        }
+                    }
+                }
+                return event
+            }
+        }
+        .onDisappear {
+            if let commandMonitor { NSEvent.removeMonitor(commandMonitor) }
         }
         .sheet(item: $editingSegment) { seg in
             NoiseSegmentEditorView(segment: seg, onSave: { updated in
@@ -190,6 +211,26 @@ struct NoiseAnalysisView: View {
                         .font(.system(size: 11)).foregroundStyle(AppColors.primary)
                 }
                 .buttonStyle(.plain)
+                if commandKeyDown {
+                    Button {
+                        toolMode[cap.id] = .select
+                        NSCursor.iBeam.set()
+                    } label: {
+                        Image(systemName: "text.cursor")
+                            .font(.system(size: 11))
+                            .foregroundStyle(toolMode[cap.id] == .select ? AppColors.primary : AppColors.textTertiary)
+                    }
+                    .buttonStyle(.plain)
+                    Button {
+                        toolMode[cap.id] = .pan
+                        NSCursor.openHand.set()
+                    } label: {
+                        Image(systemName: "hand.draw")
+                            .font(.system(size: 11))
+                            .foregroundStyle(toolMode[cap.id] == .pan ? AppColors.primary : AppColors.textTertiary)
+                    }
+                    .buttonStyle(.plain)
+                }
                 Spacer()
                 if !segs.isEmpty { noiseSummaryBadges(segs) }
                 Button { Task { await reanalyzeCapture(cap) } } label: {
@@ -227,9 +268,10 @@ struct NoiseAnalysisView: View {
         let minW: CGFloat = 700
         let naturalW = CGFloat(amps.count)
         let baseW = max(minW, naturalW)
+        let zoom = zoomScales[capture.id] ?? 1.0
 
         return GeometryReader { geo in
-            let totalW = max(baseW, baseW * zoomScale)
+            let totalW = max(baseW, baseW * zoom)
             ScrollView(.horizontal, showsIndicators: true) {
                 Canvas { context, size in
                     let w = size.width, h = size.height, midY = h / 2
@@ -290,12 +332,16 @@ struct NoiseAnalysisView: View {
                 .gesture(
                     DragGesture(minimumDistance: 5)
                         .onChanged { val in
-                            manualSelectCaptureId = capture.id
-                            manualSelectStart = val.startLocation.x
-                            manualSelectEnd = val.location.x
+                            if toolMode[capture.id] == .select || (!commandKeyDown && toolMode[capture.id] == nil) {
+                                manualSelectCaptureId = capture.id
+                                manualSelectStart = val.startLocation.x
+                                manualSelectEnd = val.location.x
+                            }
                         }
                         .onEnded { _ in
-                            showManualTypePicker = true
+                            if toolMode[capture.id] == .select || (!commandKeyDown && manualSelectStart != nil) {
+                                showManualTypePicker = true
+                            }
                         }
                 )
                 .onTapGesture { loc in
@@ -306,10 +352,11 @@ struct NoiseAnalysisView: View {
                     }
                 }
                 .gesture(MagnificationGesture().onChanged { val in
-                    zoomScale = max(1.0, min(10.0, val))
+                    zoomScales[capture.id] = max(1.0, min(10.0, val))
                 })
                 .onScrollWheelZoom { delta in
-                    zoomScale = max(1.0, min(10.0, zoomScale + delta))
+                    let current = zoomScales[capture.id] ?? 1.0
+                    zoomScales[capture.id] = max(1.0, min(10.0, current + delta))
                 }
             }
         }
@@ -467,7 +514,8 @@ struct NoiseAnalysisView: View {
         let totalDur = appState.audioPlayer.duration > 0
             ? appState.audioPlayer.duration
             : max(1, Double(amps.count) * 0.3)
-        let baseW = max(700, CGFloat(amps.count)) * zoomScale
+        let zoom = zoomScales[captureId] ?? 1.0
+        let baseW = max(700, CGFloat(amps.count)) * zoom
         let t0 = Double(min(s, e)) / Double(baseW) * totalDur
         let t1 = Double(max(s, e)) / Double(baseW) * totalDur
 
