@@ -15,6 +15,7 @@ enum L10n {
     static var morningReport: String { s("nav.morningReport") }
     static var recordings: String { s("nav.recordings") }
     static var noiseAnalysis: String { s("nav.noiseAnalysis") }
+    static var rooms: String { s("nav.rooms") }
     static var trends: String { s("nav.trends") }
     static var profiles: String { s("nav.profiles") }
     static var settings: String { s("nav.settings") }
@@ -213,4 +214,12 @@ enum L10n {
     static var noNoiseSegments: String { s("noise.none") }
     static var noiseFilterAll: String { s("noise.filterAll") }
     static var editNoiseSegment: String { s("noise.edit") }
+    static var addRoom: String { s("room.add") }
+    static var noRooms: String { s("room.none") }
+    static var renameRoom: String { s("room.rename") }
+    static var roomNamePlaceholder: String { s("room.namePlaceholder") }
+    static var liveCapture: String { s("noise.liveCapture") }
+    static var startCapture: String { s("noise.startCapture") }
+    static var stopCapture: String { s("noise.stopCapture") }
+    static var exportMLData: String { s("ml.export") }
 }

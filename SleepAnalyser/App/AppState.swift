@@ -20,6 +20,7 @@ final class AppState {
     let profileRepo: ProfileRepository
     let recordingManager: AudioRecordingManager
     let audioPlayer: AudioPlayerService
+    let roomRepo: RoomRepository
 
     var activeSession: SleepSession?
     var activeProfile: UserProfile?
@@ -32,6 +33,7 @@ final class AppState {
     var isRecording: Bool { activeSession?.state == .recording }
     var micPermissionGranted = false
     var calibration: AcousticCalibration?
+    var activeRoom: RoomProfile?
     var currentAmplitude: Double = 0
     var breathCount: Int = 0
 
@@ -54,6 +56,7 @@ final class AppState {
         self.profileRepo = ProfileRepository(persistence: persistence)
         self.recordingManager = AudioRecordingManager()
         self.audioPlayer = AudioPlayerService()
+        self.roomRepo = RoomRepository(persistence: persistence)
 
         Task { await loadActiveProfile() }
         checkMicPermission()
@@ -77,6 +80,14 @@ final class AppState {
             let newProfile = UserProfile(name: name)
             try? await profileRepo.createProfile(newProfile)
             await MainActor.run { activeProfile = newProfile }
+        }
+        await loadActiveRoom()
+    }
+
+    func loadActiveRoom() async {
+        guard let profileId = activeProfile?.id else { return }
+        if let room = try? await roomRepo.getSelectedRoom(for: profileId) {
+            await MainActor.run { activeRoom = room }
         }
     }
 

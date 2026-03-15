@@ -160,6 +160,7 @@
 
 "nav.recordings" = "Recordings";
 "nav.noiseAnalysis" = "Noise Analysis";
+"nav.rooms" = "Rooms";
 "recordings.none" = "No recordings yet. Start a sleep session to begin recording.";
 "event.edit" = "Edit Event";
 "event.confirm" = "Confirm";
@@ -170,3 +171,12 @@
 "noise.none" = "No noise segments detected yet. Start a session to begin analysis.";
 "noise.filterAll" = "All";
 "noise.edit" = "Edit Noise Segment";
+
+"room.add" = "Add Room";
+"room.none" = "No rooms configured. Add a room to improve calibration accuracy.";
+"room.rename" = "Rename Room";
+"room.namePlaceholder" = "e.g. Bedroom, Guest Room";
+"noise.liveCapture" = "Live Capture";
+"noise.startCapture" = "Start Capture";
+"noise.stopCapture" = "Stop Capture";
+"ml.export" = "Export Training Data";

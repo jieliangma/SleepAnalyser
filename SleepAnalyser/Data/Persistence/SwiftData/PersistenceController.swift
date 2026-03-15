@@ -17,7 +17,8 @@ final class PersistenceController: @unchecked Sendable {
             SDSleepEpoch.self,
             SDAudioEvent.self,
             SDCalibration.self,
-            SDNoiseSegment.self
+            SDNoiseSegment.self,
+            SDRoomProfile.self
         ])
         let config = ModelConfiguration(isStoredInMemoryOnly: inMemory)
         do {

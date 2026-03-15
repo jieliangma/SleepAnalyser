@@ -6,11 +6,16 @@ struct NoiseAnalysisView: View {
     @State private var segments: [NoiseSegment] = []
     @State private var editingSegment: NoiseSegment?
     @State private var filterType: String = "all"
+    @State private var isLiveCapturing = false
+    @State private var liveNoiseType: String = "unknown"
+    @State private var liveDB: Double = -50
+    @State private var captureTask: Task<Void, Never>?
 
     var body: some View {
         ScrollView {
             VStack(spacing: AppSpacing.lg) {
                 header
+                liveCaptureSection
                 filterBar
                 if filteredSegments.isEmpty {
                     emptyState
@@ -36,8 +41,49 @@ struct NoiseAnalysisView: View {
         HStack {
             Text(L10n.noiseAnalysis).font(AppTypography.title).foregroundStyle(AppColors.textPrimary)
             Spacer()
+            Button {
+                exportMLTrainingData()
+            } label: {
+                Label(L10n.exportMLData, systemImage: "square.and.arrow.up")
+                    .font(.system(size: 12, weight: .medium)).foregroundStyle(AppColors.primary)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(AppColors.primary.opacity(0.1)).clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
             Text("\(filteredSegments.count)").font(AppTypography.metricValue).foregroundStyle(AppColors.textSecondary)
         }
+    }
+
+    private var liveCaptureSection: some View {
+        VStack(spacing: AppSpacing.md) {
+            HStack {
+                Text(L10n.liveCapture).font(AppTypography.headline).foregroundStyle(AppColors.textPrimary)
+                Spacer()
+                if isLiveCapturing {
+                    HStack(spacing: 4) {
+                        Circle().fill(AppColors.success).frame(width: 6, height: 6)
+                        Text((NoiseTypeLabel(rawValue: liveNoiseType) ?? .unknown).displayName)
+                            .font(AppTypography.caption).foregroundStyle(AppColors.textSecondary)
+                        Text(String(format: "%.0f dB", liveDB))
+                            .font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
+                    }
+                }
+            }
+            Button {
+                if isLiveCapturing { stopLiveCapture() } else { startLiveCapture() }
+            } label: {
+                Label(isLiveCapturing ? L10n.stopCapture : L10n.startCapture,
+                      systemImage: isLiveCapturing ? "stop.fill" : "mic.fill")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(isLiveCapturing ? AppColors.error : AppColors.primary)
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background((isLiveCapturing ? AppColors.error : AppColors.primary).opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(AppSpacing.cardPadding).background(AppColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: AppSpacing.cardCornerRadius))
     }
 
     private var filterBar: some View {
@@ -160,6 +206,85 @@ struct NoiseAnalysisView: View {
             existing.isConfirmed = seg.isConfirmed
             existing.userLabel = seg.userLabel
             try? context.save()
+        }
+    }
+
+    private func startLiveCapture() {
+        isLiveCapturing = true
+        captureTask = Task {
+            do {
+                if !appState.micPermissionGranted { await appState.requestMicPermission() }
+                guard appState.micPermissionGranted else { return }
+                try await appState.captureService.startCapture()
+                let separator = NoiseSeparatorBridge()
+                let stream = appState.captureService.audioStream
+                var segStart = Date()
+
+                for await frame in stream {
+                    guard isLiveCapturing else { break }
+                    separator.updateNoiseFloor(samples: frame.samples)
+                    let (noiseType, conf) = separator.classifyNoise(samples: frame.samples)
+                    let bands = separator.computeBandEnergy(samples: frame.samples)
+                    let db = bands.totalRMS > 0 ? 20.0 * log10(Double(bands.totalRMS)) : -100
+
+                    await MainActor.run {
+                        liveNoiseType = noiseType.rawValue
+                        liveDB = db
+                    }
+
+                    if noiseType != .quiet && conf > 0.4 {
+                        let now = Date()
+                        if now.timeIntervalSince(segStart) > 2 {
+                            let seg = NoiseSegment(
+                                sessionId: appState.activeSession?.id ?? UUID(),
+                                timestamp: segStart, endTime: now,
+                                noiseType: noiseType.rawValue, confidence: Double(conf), energyDB: db
+                            )
+                            let context = appState.persistence.newBackgroundContext()
+                            context.insert(SDNoiseSegment(
+                                id: seg.id, sessionId: seg.sessionId, timestamp: seg.timestamp,
+                                endTime: seg.endTime, noiseType: seg.noiseType, confidence: seg.confidence,
+                                energyDB: seg.energyDB
+                            ))
+                            try? context.save()
+                            await MainActor.run { segments.append(seg) }
+                            segStart = now
+                        }
+                    } else {
+                        segStart = Date()
+                    }
+                }
+            } catch {
+                await MainActor.run { isLiveCapturing = false }
+            }
+            appState.captureService.stopCapture()
+        }
+    }
+
+    private func stopLiveCapture() {
+        isLiveCapturing = false
+        captureTask?.cancel()
+        captureTask = nil
+        appState.captureService.stopCapture()
+    }
+
+    private func exportMLTrainingData() {
+        let confirmed = segments.filter { $0.isConfirmed }
+        guard !confirmed.isEmpty else { return }
+
+        var csv = "timestamp,noise_type,confidence,energy_db,user_label\n"
+        for seg in confirmed {
+            let ts = ISO8601DateFormatter().string(from: seg.timestamp)
+            csv += "\(ts),\(seg.displayType),\(seg.confidence),\(seg.energyDB),\(seg.userLabel ?? "")\n"
+        }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.commaSeparatedText]
+        panel.nameFieldStringValue = "noise_training_data.csv"
+        panel.begin { response in
+            if response == .OK, let url = panel.url {
+                try? csv.write(to: url, atomically: true, encoding: .utf8)
+            }
         }
     }
 }

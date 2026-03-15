@@ -160,6 +160,7 @@
 
 "nav.recordings" = "录音";
 "nav.noiseAnalysis" = "噪声分析";
+"nav.rooms" = "房间";
 "recordings.none" = "暂无录音。开始睡眠追踪后将自动录制。";
 "event.edit" = "编辑事件";
 "event.confirm" = "确认";
@@ -170,3 +171,12 @@
 "noise.none" = "暂无噪声片段。开始睡眠追踪后将自动分析。";
 "noise.filterAll" = "全部";
 "noise.edit" = "编辑噪声片段";
+
+"room.add" = "添加房间";
+"room.none" = "暂无房间。添加房间可提高校准精准度。";
+"room.rename" = "重命名房间";
+"room.namePlaceholder" = "例如：卧室、客房";
+"noise.liveCapture" = "实时采集";
+"noise.startCapture" = "开始采集";
+"noise.stopCapture" = "停止采集";
+"ml.export" = "导出训练数据";

@@ -43,12 +43,14 @@
 		0FAC11EB95A63717A6BC4A84 = {isa = PBXBuildFile; fileRef = 0A3E51DDC2C04C188D80FF5F; };
 		0606AE54C0473A6794D613CA = {isa = PBXBuildFile; fileRef = 5907FDE75F7E0C3C222E63DE; };
 		1687049685EA23DF5EE294E7 = {isa = PBXBuildFile; fileRef = 9D6669FB26633F3E5E9A3980; };
+		5C4A3C41170A5B86CF298559 = {isa = PBXBuildFile; fileRef = CA48FB5D03AA5F9E5577CADA; };
 		ADD1E54E143EF09C6698E370 = {isa = PBXBuildFile; fileRef = 63F35835FD0032432D3E4FC1; };
 		E77F20DF85F9B5BAE11E8643 = {isa = PBXBuildFile; fileRef = 2DFFFBB2653F2B662E98C33E; };
 		14612205C2BD9741DC3F09C6 = {isa = PBXBuildFile; fileRef = FC22A28C67DA716A730D0BB7; };
 		29B06731758AACD8C1362E80 = {isa = PBXBuildFile; fileRef = F0CBDD11D6B74248EEA8F76D; };
 		A53592E0EF3E82755934EC54 = {isa = PBXBuildFile; fileRef = 9AE99C5A711BEC2CF2553C97; };
 		187055CB46241AB7847C9B81 = {isa = PBXBuildFile; fileRef = F4DEE3F3DE4D1DBED40239ED; };
+		1F2B086BC272C58F0942A757 = {isa = PBXBuildFile; fileRef = BAC104B466A734FD7986A780; };
 		A9FEAD6D10735B07EA5775FE = {isa = PBXBuildFile; fileRef = EA2C71A7736AA425E387159B; };
 		49138DB0F96086DC775E5354 = {isa = PBXBuildFile; fileRef = 406989EA27AE38819E467884; };
 		6CA7FF918428598F5619A539 = {isa = PBXBuildFile; fileRef = ED2B7F5435DEA4C92C8221A4; };
@@ -64,6 +66,7 @@
 		36C37EFFAB373E9FC2C4E1E3 = {isa = PBXBuildFile; fileRef = A0E7BB0DD1B1A03006A73CEC; };
 		1C635A8807C7D4F2BE538734 = {isa = PBXBuildFile; fileRef = 7182642BFA2A6E7A3EF445B1; };
 		70C89921024B5C3B94C13525 = {isa = PBXBuildFile; fileRef = 0298EA4ED80A3EB77F10D92A; };
+		EB711682B6BE63206494B8A6 = {isa = PBXBuildFile; fileRef = F846D49D14D4668CB7CBDBE1; };
 		3600A5013AD865D0E503639C = {isa = PBXBuildFile; fileRef = D41B0D2BD853C7719AD25629; };
 		E51B038D52FF22937FB80705 = {isa = PBXBuildFile; fileRef = 49115B9B7B3E0141072F2D5A; };
 		705E292BF1A6AE09003BC0BB = {isa = PBXBuildFile; fileRef = F2EBE5AF06194BF640F0B42A; };
@@ -102,6 +105,7 @@
 		4665ADEA6F325262972DB701 = {isa = PBXBuildFile; fileRef = 7290B19BE8B5443A8042DEB8; };
 		4125710DCF44C2B0893D80DE = {isa = PBXBuildFile; fileRef = E9FB4EA52D13803E104FF848; };
 		E75D839B0A4ED5713094E702 = {isa = PBXBuildFile; fileRef = 45B6EF68CD2065F2730422D0; };
+		16121BC22F55CE5B26C047A1 = {isa = PBXBuildFile; fileRef = B5DB5990131ED88A7182FE7A; };
 		A431967D61C1F08546AAA4F0 = {isa = PBXBuildFile; fileRef = E35AE04E9F765B44838133D1; };
 		C4240F4ED4165D058B08E2C4 = {isa = PBXBuildFile; fileRef = 6015DF7BE19D56EC487BAEE7; };
 		80E89BE1D310BBF6E2342E0C = {isa = PBXBuildFile; fileRef = 22EADE926DF4B91BA6A1DCBC; };
@@ -194,12 +198,14 @@
 		0A3E51DDC2C04C188D80FF5F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SDAudioEvent.swift"; sourceTree = "<group>"; };
 		5907FDE75F7E0C3C222E63DE = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SDCalibration.swift"; sourceTree = "<group>"; };
 		9D6669FB26633F3E5E9A3980 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SDNoiseSegment.swift"; sourceTree = "<group>"; };
+		CA48FB5D03AA5F9E5577CADA = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SDRoomProfile.swift"; sourceTree = "<group>"; };
 		63F35835FD0032432D3E4FC1 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SDSleepEpoch.swift"; sourceTree = "<group>"; };
 		2DFFFBB2653F2B662E98C33E = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SDSleepSession.swift"; sourceTree = "<group>"; };
 		FC22A28C67DA716A730D0BB7 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SDUserProfile.swift"; sourceTree = "<group>"; };
 		F0CBDD11D6B74248EEA8F76D = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PersistenceController.swift"; sourceTree = "<group>"; };
 		9AE99C5A711BEC2CF2553C97 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProfileRepository.swift"; sourceTree = "<group>"; };
 		F4DEE3F3DE4D1DBED40239ED = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ReportRepository.swift"; sourceTree = "<group>"; };
+		BAC104B466A734FD7986A780 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RoomRepository.swift"; sourceTree = "<group>"; };
 		EA2C71A7736AA425E387159B = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SessionRepository.swift"; sourceTree = "<group>"; };
 		406989EA27AE38819E467884 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ConfidenceLevel.swift"; sourceTree = "<group>"; };
 		ED2B7F5435DEA4C92C8221A4 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DisturbanceSource.swift"; sourceTree = "<group>"; };
@@ -215,6 +221,7 @@
 		A0E7BB0DD1B1A03006A73CEC = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningReport.swift"; sourceTree = "<group>"; };
 		7182642BFA2A6E7A3EF445B1 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoiseSegment.swift"; sourceTree = "<group>"; };
 		0298EA4ED80A3EB77F10D92A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProcessedFrame.swift"; sourceTree = "<group>"; };
+		F846D49D14D4668CB7CBDBE1 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RoomProfile.swift"; sourceTree = "<group>"; };
 		D41B0D2BD853C7719AD25629 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepEpoch.swift"; sourceTree = "<group>"; };
 		49115B9B7B3E0141072F2D5A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepScore.swift"; sourceTree = "<group>"; };
 		F2EBE5AF06194BF640F0B42A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepSession.swift"; sourceTree = "<group>"; };
@@ -253,6 +260,7 @@
 		7290B19BE8B5443A8042DEB8 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EventEditorView.swift"; sourceTree = "<group>"; };
 		E9FB4EA52D13803E104FF848 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningReportView.swift"; sourceTree = "<group>"; };
 		45B6EF68CD2065F2730422D0 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TrendsView.swift"; sourceTree = "<group>"; };
+		B5DB5990131ED88A7182FE7A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RoomManagementView.swift"; sourceTree = "<group>"; };
 		E35AE04E9F765B44838133D1 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LiveSessionView.swift"; sourceTree = "<group>"; };
 		6015DF7BE19D56EC487BAEE7 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CalibrationView.swift"; sourceTree = "<group>"; };
 		22EADE926DF4B91BA6A1DCBC = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsView.swift"; sourceTree = "<group>"; };
@@ -460,6 +468,7 @@
 				0A3E51DDC2C04C188D80FF5F,
 				5907FDE75F7E0C3C222E63DE,
 				9D6669FB26633F3E5E9A3980,
+				CA48FB5D03AA5F9E5577CADA,
 				63F35835FD0032432D3E4FC1,
 				2DFFFBB2653F2B662E98C33E,
 				FC22A28C67DA716A730D0BB7,
@@ -469,7 +478,12 @@
 		};
 		B6F7C2BA53F7193EE99C263F = {
 			isa = PBXGroup;
-			children = (9AE99C5A711BEC2CF2553C97, F4DEE3F3DE4D1DBED40239ED, EA2C71A7736AA425E387159B);
+			children = (
+				9AE99C5A711BEC2CF2553C97,
+				F4DEE3F3DE4D1DBED40239ED,
+				BAC104B466A734FD7986A780,
+				EA2C71A7736AA425E387159B,
+			);
 			path = "Repositories";
 			sourceTree = "<group>";
 		};
@@ -508,6 +522,7 @@
 				A0E7BB0DD1B1A03006A73CEC,
 				7182642BFA2A6E7A3EF445B1,
 				0298EA4ED80A3EB77F10D92A,
+				F846D49D14D4668CB7CBDBE1,
 				D41B0D2BD853C7719AD25629,
 				49115B9B7B3E0141072F2D5A,
 				F2EBE5AF06194BF640F0B42A,
@@ -581,6 +596,7 @@
 				EEBDB1C2863D07D86B9D1AAA,
 				ACB5C9F63B8C0EF28D6D57FF,
 				AD11562FFD94E4BA7137000F,
+				6CDFDC57099A12B1021E6662,
 				C4D5DAB8912265304C2390B8,
 				D7D794053EDEF1F6F824E4F6,
 				1AED4DDBCA45FA796A89A66C,
@@ -623,6 +639,12 @@
 			isa = PBXGroup;
 			children = (E9FB4EA52D13803E104FF848, 45B6EF68CD2065F2730422D0);
 			path = "Reports";
+			sourceTree = "<group>";
+		};
+		6CDFDC57099A12B1021E6662 = {
+			isa = PBXGroup;
+			children = (B5DB5990131ED88A7182FE7A);
+			path = "Rooms";
 			sourceTree = "<group>";
 		};
 		C4D5DAB8912265304C2390B8 = {
@@ -878,12 +900,14 @@
 				0FAC11EB95A63717A6BC4A84,
 				0606AE54C0473A6794D613CA,
 				1687049685EA23DF5EE294E7,
+				5C4A3C41170A5B86CF298559,
 				ADD1E54E143EF09C6698E370,
 				E77F20DF85F9B5BAE11E8643,
 				14612205C2BD9741DC3F09C6,
 				29B06731758AACD8C1362E80,
 				A53592E0EF3E82755934EC54,
 				187055CB46241AB7847C9B81,
+				1F2B086BC272C58F0942A757,
 				A9FEAD6D10735B07EA5775FE,
 				49138DB0F96086DC775E5354,
 				6CA7FF918428598F5619A539,
@@ -899,6 +923,7 @@
 				36C37EFFAB373E9FC2C4E1E3,
 				1C635A8807C7D4F2BE538734,
 				70C89921024B5C3B94C13525,
+				EB711682B6BE63206494B8A6,
 				3600A5013AD865D0E503639C,
 				E51B038D52FF22937FB80705,
 				705E292BF1A6AE09003BC0BB,
@@ -937,6 +962,7 @@
 				4665ADEA6F325262972DB701,
 				4125710DCF44C2B0893D80DE,
 				E75D839B0A4ED5713094E702,
+				16121BC22F55CE5B26C047A1,
 				A431967D61C1F08546AAA4F0,
 				C4240F4ED4165D058B08E2C4,
 				80E89BE1D310BBF6E2342E0C,
