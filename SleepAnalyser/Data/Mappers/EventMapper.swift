@@ -7,7 +7,10 @@ enum EventMapper {
             eventType: EventType(rawValue: sd.eventTypeRawValue) ?? .disturbance,
             source: sd.sourceRawValue.flatMap { DisturbanceSource(rawValue: $0) },
             startAt: sd.startAt, endAt: sd.endAt,
-            severity: sd.severity, confidence: sd.confidence
+            severity: sd.severity, confidence: sd.confidence,
+            audioClipURL: sd.audioClipPath.flatMap { URL(fileURLWithPath: $0) },
+            isConfirmed: sd.isConfirmed,
+            userLabel: sd.userLabel
         )
     }
 
@@ -17,7 +20,10 @@ enum EventMapper {
             eventTypeRawValue: domain.eventType.rawValue,
             sourceRawValue: domain.source?.rawValue,
             startAt: domain.startAt, endAt: domain.endAt,
-            severity: domain.severity, confidence: domain.confidence
+            severity: domain.severity, confidence: domain.confidence,
+            audioClipPath: domain.audioClipURL?.path,
+            isConfirmed: domain.isConfirmed,
+            userLabel: domain.userLabel
         )
     }
 }

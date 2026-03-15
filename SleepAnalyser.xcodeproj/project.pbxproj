@@ -31,6 +31,8 @@
 		924397DDF452D82BFFF1006C = {isa = PBXBuildFile; fileRef = FFD5F8111C8D826BCF4DCFBD; };
 		D8BF38E2451F97859A410BB7 = {isa = PBXBuildFile; fileRef = BAA58CE86252970F205AE819; };
 		D7935C63743319F78C540479 = {isa = PBXBuildFile; fileRef = 0F8A8D6D2431979C138C5810; };
+		4CAE5E71AB247DAFCE3085A4 = {isa = PBXBuildFile; fileRef = 793769AAD730A1719AE514EA; };
+		47101913D83863F72396B2FF = {isa = PBXBuildFile; fileRef = 3B8461338CCD999E7747BAE9; };
 		6BA292A15E954C07817970C9 = {isa = PBXBuildFile; fileRef = D3330DEE581E8F3D519EAF5A; };
 		6F10FD0374A1639EDA2DE8FD = {isa = PBXBuildFile; fileRef = 548DFC1CBFD78E53489219C6; };
 		97B4B64BF89473405F33FD9C = {isa = PBXBuildFile; fileRef = BAA4393ACD1EB3732B2F3413; };
@@ -91,6 +93,8 @@
 		C4383DB1B69AC073C7544967 = {isa = PBXBuildFile; fileRef = 3C420E3FEB304391BF44BB7B; };
 		708D27ED098C3DEDAB5612B6 = {isa = PBXBuildFile; fileRef = EC2B4CCCD2BC27884A735175; };
 		B588202CED89B356604A7F5E = {isa = PBXBuildFile; fileRef = 5F9001A8C24AA413302005D5; };
+		62715958867D3D4B1D21F506 = {isa = PBXBuildFile; fileRef = 26F51C1AADE6FAB86EE58C2D; };
+		4665ADEA6F325262972DB701 = {isa = PBXBuildFile; fileRef = 7290B19BE8B5443A8042DEB8; };
 		4125710DCF44C2B0893D80DE = {isa = PBXBuildFile; fileRef = E9FB4EA52D13803E104FF848; };
 		E75D839B0A4ED5713094E702 = {isa = PBXBuildFile; fileRef = 45B6EF68CD2065F2730422D0; };
 		A431967D61C1F08546AAA4F0 = {isa = PBXBuildFile; fileRef = E35AE04E9F765B44838133D1; };
@@ -168,6 +172,8 @@
 		FFD5F8111C8D826BCF4DCFBD = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioPipelineCoordinator.swift"; sourceTree = "<group>"; };
 		BAA58CE86252970F205AE819 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PipelineMetrics.swift"; sourceTree = "<group>"; };
 		0F8A8D6D2431979C138C5810 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RingBuffer.swift"; sourceTree = "<group>"; };
+		793769AAD730A1719AE514EA = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioPlayerService.swift"; sourceTree = "<group>"; };
+		3B8461338CCD999E7747BAE9 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioRecordingManager.swift"; sourceTree = "<group>"; };
 		D3330DEE581E8F3D519EAF5A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FeatureVectorDTO.swift"; sourceTree = "<group>"; };
 		548DFC1CBFD78E53489219C6 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "InferenceOutputDTO.swift"; sourceTree = "<group>"; };
 		BAA4393ACD1EB3732B2F3413 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EventMapper.swift"; sourceTree = "<group>"; };
@@ -228,6 +234,8 @@
 		3C420E3FEB304391BF44BB7B = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DashboardView.swift"; sourceTree = "<group>"; };
 		EC2B4CCCD2BC27884A735175 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MenuBarView.swift"; sourceTree = "<group>"; };
 		5F9001A8C24AA413302005D5 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProfileListView.swift"; sourceTree = "<group>"; };
+		26F51C1AADE6FAB86EE58C2D = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioRecordingsView.swift"; sourceTree = "<group>"; };
+		7290B19BE8B5443A8042DEB8 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EventEditorView.swift"; sourceTree = "<group>"; };
 		E9FB4EA52D13803E104FF848 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningReportView.swift"; sourceTree = "<group>"; };
 		45B6EF68CD2065F2730422D0 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TrendsView.swift"; sourceTree = "<group>"; };
 		E35AE04E9F765B44838133D1 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LiveSessionView.swift"; sourceTree = "<group>"; };
@@ -326,6 +334,7 @@
 				D196C202B8FE3CA93D2E67D3,
 				2FDEC15082C402785C850A83,
 				356AABD730A086E668D3F182,
+				C8F9D9949E4D4D36C52DF9CB,
 			);
 			path = "Audio";
 			sourceTree = "<group>";
@@ -364,6 +373,12 @@
 			isa = PBXGroup;
 			children = (FFD5F8111C8D826BCF4DCFBD, BAA58CE86252970F205AE819, 0F8A8D6D2431979C138C5810);
 			path = "Pipeline";
+			sourceTree = "<group>";
+		};
+		C8F9D9949E4D4D36C52DF9CB = {
+			isa = PBXGroup;
+			children = (793769AAD730A1719AE514EA, 3B8461338CCD999E7747BAE9);
+			path = "Recording";
 			sourceTree = "<group>";
 		};
 		6E8713D6061C3016ED856A07 = {
@@ -523,6 +538,7 @@
 				6F43DBEE0104C3609F9BD094,
 				7F160EE719E66935C2C524D6,
 				EEBDB1C2863D07D86B9D1AAA,
+				ACB5C9F63B8C0EF28D6D57FF,
 				AD11562FFD94E4BA7137000F,
 				C4D5DAB8912265304C2390B8,
 				D7D794053EDEF1F6F824E4F6,
@@ -548,6 +564,12 @@
 			isa = PBXGroup;
 			children = (5F9001A8C24AA413302005D5);
 			path = "Profiles";
+			sourceTree = "<group>";
+		};
+		ACB5C9F63B8C0EF28D6D57FF = {
+			isa = PBXGroup;
+			children = (26F51C1AADE6FAB86EE58C2D, 7290B19BE8B5443A8042DEB8);
+			path = "Recordings";
 			sourceTree = "<group>";
 		};
 		AD11562FFD94E4BA7137000F = {
@@ -797,6 +819,8 @@
 				924397DDF452D82BFFF1006C,
 				D8BF38E2451F97859A410BB7,
 				D7935C63743319F78C540479,
+				4CAE5E71AB247DAFCE3085A4,
+				47101913D83863F72396B2FF,
 				6BA292A15E954C07817970C9,
 				6F10FD0374A1639EDA2DE8FD,
 				97B4B64BF89473405F33FD9C,
@@ -857,6 +881,8 @@
 				C4383DB1B69AC073C7544967,
 				708D27ED098C3DEDAB5612B6,
 				B588202CED89B356604A7F5E,
+				62715958867D3D4B1D21F506,
+				4665ADEA6F325262972DB701,
 				4125710DCF44C2B0893D80DE,
 				E75D839B0A4ED5713094E702,
 				A431967D61C1F08546AAA4F0,

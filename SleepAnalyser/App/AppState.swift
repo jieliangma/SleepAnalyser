@@ -18,6 +18,8 @@ final class AppState {
     let trendAggregator: TrendAggregator
     let sessionRepo: SessionRepository
     let profileRepo: ProfileRepository
+    let recordingManager: AudioRecordingManager
+    let audioPlayer: AudioPlayerService
 
     var activeSession: SleepSession?
     var activeProfile: UserProfile?
@@ -50,6 +52,8 @@ final class AppState {
         self.trendAggregator = TrendAggregator()
         self.sessionRepo = SessionRepository(persistence: persistence)
         self.profileRepo = ProfileRepository(persistence: persistence)
+        self.recordingManager = AudioRecordingManager()
+        self.audioPlayer = AudioPlayerService()
 
         Task { await loadActiveProfile() }
         checkMicPermission()
@@ -98,6 +102,7 @@ final class AppState {
         }
 
         try await captureService.startCapture()
+        try? recordingManager.startNightRecording(sessionId: session.id)
         let outputStream = pipeline.makeOutputStream()
         let realtimeStream = pipeline.makeRealtimeStream()
 
@@ -123,6 +128,7 @@ final class AppState {
             Task {
                 for await frame in audioStream {
                     guard let session = self.activeSession, session.state == .recording else { break }
+                    self.recordingManager.feedAudio(frame.samples)
                     self.pipeline.processFrame(frame, sessionId: session.id)
                 }
             }
@@ -141,6 +147,7 @@ final class AppState {
         timerTask?.cancel()
         timerTask = nil
         captureService.stopCapture()
+        recordingManager.stopNightRecording()
         pipeline.reset()
 
         guard var session = activeSession else { return }
@@ -173,7 +180,12 @@ final class AppState {
         currentStage = smoothed
         currentBreathingRate = output.breathingSample.breathsPerMinute
 
-        for event in output.events {
+        for var event in output.events {
+            if let clipURL = recordingManager.captureEventClip(
+                eventId: event.id, eventTime: event.startAt, sessionStart: session.startAt
+            ) {
+                event.audioClipURL = clipURL
+            }
             sessionEvents.append(event)
             try? await sessionRepo.addEvent(event, toSession: session.id)
         }

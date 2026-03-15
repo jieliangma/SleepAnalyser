@@ -3,6 +3,8 @@ import SwiftUI
 struct MorningReportView: View {
     @Environment(AppState.self) private var appState
     @State private var report: MorningReport?
+    @State private var epochs: [SleepEpoch] = []
+    @State private var selectedEvent: AudioEvent?
 
     var body: some View {
         ScrollView {
@@ -10,7 +12,7 @@ struct MorningReportView: View {
                 VStack(spacing: AppSpacing.lg) {
                     SleepScoreGaugeView(score: report.score.overall, grade: report.score.grade).padding(.top, AppSpacing.lg)
                     metricsRow(report)
-                    stagesSection(report)
+                    stagesSection
                     eventsSection(report)
                     insightsSection(report)
                 }
@@ -19,24 +21,30 @@ struct MorningReportView: View {
                 emptyView
             }
         }
-        .task { loadReport() }
+        .background(AppColors.background)
+        .task { await loadReport() }
     }
 
     private func metricsRow(_ r: MorningReport) -> some View {
         HStack(spacing: AppSpacing.md) {
-            MetricCardView(icon: "bed.double.fill", title: L10n.bedtime, value: formatTime(appState.activeSession?.startAt))
-            MetricCardView(icon: "alarm.fill", title: L10n.wakeTime, value: formatTime(appState.activeSession?.endAt))
+            MetricCardView(icon: "bed.double.fill", title: L10n.bedtime, value: formatTime(r.sessionId))
+            MetricCardView(icon: "alarm.fill", title: L10n.wakeTime, value: formatEndTime(r.sessionId))
             MetricCardView(icon: "clock.fill", title: L10n.duration, value: DurationFormatter.format(r.totalDuration))
             MetricCardView(icon: "percent", title: L10n.efficiency, value: String(format: "%.0f%%", r.efficiency * 100))
         }
     }
 
-    private func stagesSection(_ r: MorningReport) -> some View {
+    private var stagesSection: some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
             Text(L10n.sleepStages).font(AppTypography.headline).foregroundStyle(AppColors.textPrimary)
-            HypnogramChartView(epochs: appState.epochHistory)
-                .padding(AppSpacing.cardPadding).background(AppColors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: AppSpacing.cardCornerRadius))
+            if epochs.isEmpty {
+                Text(L10n.insightTrackMore).font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
+                    .frame(height: 200)
+            } else {
+                HypnogramChartView(epochs: epochs)
+                    .padding(AppSpacing.cardPadding).background(AppColors.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: AppSpacing.cardCornerRadius))
+            }
         }
     }
 
@@ -46,7 +54,12 @@ struct MorningReportView: View {
             if r.events.isEmpty {
                 Text(L10n.insightNoAwakenings).font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
             } else {
-                EventTimelineView(events: r.events)
+                EventTimelineView(events: r.events) { event in
+                    if event.hasAudioClip, let url = event.audioClipURL {
+                        appState.audioPlayer.toggle(url: url, eventId: event.id)
+                    }
+                    selectedEvent = event
+                }
             }
         }
     }
@@ -73,25 +86,33 @@ struct MorningReportView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity).padding(.top, 100)
     }
 
-    private func loadReport() {
-        report = appState.generateReport()
-        if report == nil {
-            Task {
-                let sessions = (try? await appState.sessionRepo.getSessions(
-                    from: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date(), to: Date()
-                )) ?? []
-                if let latest = sessions.first(where: { $0.state == .stopped }) {
-                    var s = latest
-                    s.epochs = (try? await appState.sessionRepo.getEpochs(forSession: latest.id)) ?? []
-                    s.events = (try? await appState.sessionRepo.getEvents(forSession: latest.id)) ?? []
-                    await MainActor.run { report = appState.reportGenerator.generateMorningReport(session: s) }
-                }
+    private func loadReport() async {
+        if let r = appState.generateReport() {
+            report = r
+            epochs = appState.epochHistory
+            return
+        }
+        let sessions = (try? await appState.sessionRepo.getSessions(
+            from: Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date(), to: Date()
+        )) ?? []
+        if let latest = sessions.first(where: { $0.state == .stopped }) {
+            var s = latest
+            s.epochs = (try? await appState.sessionRepo.getEpochs(forSession: latest.id)) ?? []
+            s.events = (try? await appState.sessionRepo.getEvents(forSession: latest.id)) ?? []
+            await MainActor.run {
+                epochs = s.epochs
+                report = appState.reportGenerator.generateMorningReport(session: s)
             }
         }
     }
 
-    private func formatTime(_ date: Date?) -> String {
-        guard let date else { return "—" }
-        return date.sleepTimeFormatted
+    private func formatTime(_ sessionId: UUID) -> String {
+        if let s = appState.activeSession, s.id == sessionId { return s.startAt.sleepTimeFormatted }
+        return "—"
+    }
+
+    private func formatEndTime(_ sessionId: UUID) -> String {
+        if let s = appState.activeSession, let end = s.endAt { return end.sleepTimeFormatted }
+        return "—"
     }
 }

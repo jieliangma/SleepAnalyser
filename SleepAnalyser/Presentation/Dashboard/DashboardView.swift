@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum SidebarItem: String, CaseIterable, Identifiable {
-    case dashboard, liveSession, morningReport, trends, profiles, settings
+    case dashboard, liveSession, morningReport, recordings, trends, profiles, settings
 
     var id: String { rawValue }
 
@@ -10,6 +10,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .dashboard: return L10n.dashboard
         case .liveSession: return L10n.liveSession
         case .morningReport: return L10n.morningReport
+        case .recordings: return L10n.recordings
         case .trends: return L10n.trends
         case .profiles: return L10n.profiles
         case .settings: return L10n.settings
@@ -21,6 +22,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .dashboard: return "house.fill"
         case .liveSession: return "waveform"
         case .morningReport: return "doc.text.fill"
+        case .recordings: return "recordingtape"
         case .trends: return "chart.line.uptrend.xyaxis"
         case .profiles: return "person.2.fill"
         case .settings: return "gear"
@@ -45,6 +47,7 @@ struct DashboardView: View {
                 case .dashboard: DashboardContentView()
                 case .liveSession: LiveSessionView()
                 case .morningReport: MorningReportView()
+                case .recordings: AudioRecordingsView()
                 case .trends: TrendsView()
                 case .profiles: ProfileListView()
                 case .settings: SettingsView()

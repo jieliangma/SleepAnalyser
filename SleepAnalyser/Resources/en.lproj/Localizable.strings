@@ -106,6 +106,8 @@
 "confidence.veryHigh" = "Very High";
 
 "event.snore" = "Snoring";
+"event.bruxism" = "Teeth Grinding";
+"event.sleepTalking" = "Sleep Talking";
 "event.disturbance" = "Disturbance";
 "event.speech" = "Speech/TV";
 "event.outOfBed" = "Got Out of Bed";
@@ -155,3 +157,11 @@
 "insight.poorScore" = "Average sleep score of %d suggests room for improvement. Focus on consistency and duration.";
 
 "NSMicrophoneUsageDescription" = "SleepAnalyser needs microphone access to analyze your breathing patterns during sleep.";
+
+"nav.recordings" = "Recordings";
+"recordings.none" = "No recordings yet. Start a sleep session to begin recording.";
+"event.edit" = "Edit Event";
+"event.confirm" = "Confirm";
+"event.typeLabel" = "Event Type";
+"event.noteLabel" = "Note";
+"event.notePlaceholder" = "Add a note about this event...";

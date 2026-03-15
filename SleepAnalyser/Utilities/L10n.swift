@@ -13,6 +13,7 @@ enum L10n {
     static var dashboard: String { s("nav.dashboard") }
     static var liveSession: String { s("nav.liveSession") }
     static var morningReport: String { s("nav.morningReport") }
+    static var recordings: String { s("nav.recordings") }
     static var trends: String { s("nav.trends") }
     static var profiles: String { s("nav.profiles") }
     static var settings: String { s("nav.settings") }
@@ -129,6 +130,8 @@ enum L10n {
 
     // MARK: - Event Types
     static var eventSnore: String { s("event.snore") }
+    static var eventBruxism: String { s("event.bruxism") }
+    static var eventSleepTalking: String { s("event.sleepTalking") }
     static var eventDisturbance: String { s("event.disturbance") }
     static var eventSpeech: String { s("event.speech") }
     static var eventOutOfBed: String { s("event.outOfBed") }
@@ -198,4 +201,12 @@ enum L10n {
     static func insightPoorScore(_ score: Int) -> String {
         String(format: s("insight.poorScore"), score)
     }
+
+    // MARK: - Recordings
+    static var noRecordings: String { s("recordings.none") }
+    static var editEvent: String { s("event.edit") }
+    static var confirmEvent: String { s("event.confirm") }
+    static var eventTypeLabel: String { s("event.typeLabel") }
+    static var noteLabel: String { s("event.noteLabel") }
+    static var notePlaceholder: String { s("event.notePlaceholder") }
 }

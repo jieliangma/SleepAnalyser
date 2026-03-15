@@ -2,25 +2,44 @@ import SwiftUI
 
 struct EventTimelineView: View {
     let events: [AudioEvent]
+    var onTap: ((AudioEvent) -> Void)? = nil
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal, showsIndicators: true) {
             HStack(spacing: AppSpacing.sm) {
                 ForEach(events) { event in
-                    VStack(spacing: AppSpacing.xs) {
-                        Image(systemName: event.eventType.sfSymbolName)
-                            .font(.system(size: 14))
-                            .foregroundStyle(severityColor(event.severity))
-                        Text(event.startAt, style: .time)
-                            .font(AppTypography.caption)
-                            .foregroundStyle(AppColors.textTertiary)
-                    }
-                    .padding(AppSpacing.sm)
-                    .background(AppColors.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    eventCard(event)
+                        .onTapGesture { onTap?(event) }
                 }
             }
+            .padding(.horizontal, 2)
+            .padding(.vertical, 4)
         }
+        .scrollIndicators(.visible)
+        .frame(minHeight: 70)
+    }
+
+    private func eventCard(_ event: AudioEvent) -> some View {
+        VStack(spacing: AppSpacing.xs) {
+            Image(systemName: event.eventType.sfSymbolName)
+                .font(.system(size: 16))
+                .foregroundStyle(severityColor(event.severity))
+            Text(event.eventType.displayName)
+                .font(.system(size: 10)).foregroundStyle(AppColors.textSecondary)
+                .lineLimit(1)
+            Text(event.startAt, style: .time)
+                .font(AppTypography.caption)
+                .foregroundStyle(AppColors.textTertiary)
+            if event.audioClipURL != nil {
+                Image(systemName: "play.circle.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(AppColors.primary)
+            }
+        }
+        .frame(minWidth: 72)
+        .padding(AppSpacing.sm)
+        .background(AppColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private func severityColor(_ severity: Double) -> Color {
