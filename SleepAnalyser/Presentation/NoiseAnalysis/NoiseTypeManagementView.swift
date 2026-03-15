@@ -76,7 +76,7 @@ struct NoiseTypeManagementView: View {
                 Button {
                     appState.audioPlayer.toggle(url: url, eventId: clipId)
                 } label: {
-                    Image(systemName: appState.audioPlayer.isPlaying ? "pause.fill" : "play.fill")
+                    Image(systemName: appState.audioPlayer.isPlaying && appState.audioPlayer.playingEventId == clipId ? "pause.fill" : "play.fill")
                         .font(.system(size: 11)).foregroundStyle(Color(hex: config.colorHex))
                 }
                 .buttonStyle(.plain).frame(width: 20)
@@ -95,7 +95,7 @@ struct NoiseTypeManagementView: View {
                             context.fill(p, with: .color(Color(hex: config.colorHex).opacity(0.6)))
                         }
 
-                        if appState.audioPlayer.isPlaying && appState.audioPlayer.duration > 0 {
+                        if appState.audioPlayer.isPlaying && appState.audioPlayer.playingEventId == clipId && appState.audioPlayer.duration > 0 {
                             let progress = appState.audioPlayer.currentTime / appState.audioPlayer.duration
                             var cursor = Path()
                             cursor.move(to: CGPoint(x: progress * w, y: 0))

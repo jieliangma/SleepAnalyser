@@ -168,12 +168,8 @@ struct NoiseAnalysisView: View {
         return VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Image(systemName: "calendar").foregroundStyle(AppColors.textTertiary)
-                Text(cap.date, format: .dateTime.year().month().day().weekday().hour().minute())
+                Text(cap.date.formatted(date: .abbreviated, time: .shortened))
                     .font(AppTypography.headline).foregroundStyle(AppColors.textPrimary)
-                if !amps.isEmpty {
-                    Text(DurationFormatter.format(Double(amps.count) / 15.0))
-                        .font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
-                }
                 Spacer()
                 if !segs.isEmpty {
                     noiseSummaryBadges(segs)
@@ -315,6 +311,7 @@ struct NoiseAnalysisView: View {
             }
         }
         .frame(height: 100)
+        .padding(.horizontal, AppSpacing.cardPadding)
     }
 
     // MARK: - Label Row
@@ -434,40 +431,31 @@ struct NoiseAnalysisView: View {
     // MARK: - Playback
 
     private func playbackBar(capture: NoiseCaptureRecorder.CaptureInfo) -> some View {
-        HStack(spacing: AppSpacing.sm) {
+        let isThisPlaying = appState.audioPlayer.isPlaying && appState.audioPlayer.playingEventId == capture.id
+        let amps = ampCache[capture.id] ?? []
+        let duration = Double(amps.count) / 15.0
+
+        return HStack(spacing: AppSpacing.sm) {
+            if !segsFor(capture).isEmpty {
+                noiseSummaryBadges(segsFor(capture))
+            }
+            Spacer()
+            Text(DurationFormatter.format(isThisPlaying ? appState.audioPlayer.currentTime : duration, style: .compact))
+                .font(.system(size: 10, design: .monospaced)).foregroundStyle(AppColors.textTertiary)
             Button {
                 guard let url = appState.noiseCaptureRecorder.audioURL(for: capture.directoryURL) else { return }
-                if appState.audioPlayer.isPlaying && appState.audioPlayer.playingEventId == capture.id {
-                    appState.audioPlayer.stop()
-                } else {
-                    appState.audioPlayer.play(url: url, eventId: capture.id)
-                }
+                if isThisPlaying { appState.audioPlayer.stop() } else { appState.audioPlayer.play(url: url, eventId: capture.id) }
             } label: {
-                Image(systemName: appState.audioPlayer.isPlaying && appState.audioPlayer.playingEventId == capture.id
-                      ? "pause.fill" : "play.fill")
+                Image(systemName: isThisPlaying ? "pause.fill" : "play.fill")
                     .font(.system(size: 12)).foregroundStyle(AppColors.primary)
             }
             .buttonStyle(.plain)
-
-            if appState.audioPlayer.playingEventId == capture.id {
-                Text(DurationFormatter.format(appState.audioPlayer.currentTime, style: .compact))
-                    .font(.system(size: 10, design: .monospaced)).foregroundStyle(AppColors.textTertiary)
-                Slider(value: Binding(
-                    get: { appState.audioPlayer.duration > 0 ? appState.audioPlayer.currentTime / appState.audioPlayer.duration : 0 },
-                    set: { appState.audioPlayer.seek(to: $0 * appState.audioPlayer.duration) }
-                ), in: 0...1)
-                .tint(AppColors.primary).controlSize(.mini)
-                Text(DurationFormatter.format(appState.audioPlayer.duration, style: .compact))
-                    .font(.system(size: 10, design: .monospaced)).foregroundStyle(AppColors.textTertiary)
-            } else {
-                Spacer()
-                let segs = segCache[capture.id] ?? []
-                if !segs.isEmpty {
-                    Text("\(segs.count) events").font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
-                }
-            }
         }
         .padding(.horizontal, AppSpacing.cardPadding).padding(.vertical, 6)
+    }
+
+    private func segsFor(_ capture: NoiseCaptureRecorder.CaptureInfo) -> [NoiseSegment] {
+        segCache[capture.id] ?? []
     }
 
     // MARK: - Summary Badges
