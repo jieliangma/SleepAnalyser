@@ -567,7 +567,8 @@ struct NoiseAnalysisView: View {
         let fmt = DateFormatter()
         fmt.dateStyle = .medium
         fmt.timeStyle = .short
-        fmt.locale = Locale.current
+        let langCode = LanguageManager.shared.effectiveLanguageCode
+        fmt.locale = Locale(identifier: langCode)
         return fmt.string(from: date)
     }
 
