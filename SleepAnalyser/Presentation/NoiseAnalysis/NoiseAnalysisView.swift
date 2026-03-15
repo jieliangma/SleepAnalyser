@@ -252,12 +252,17 @@ struct NoiseAnalysisView: View {
                         )
                     }
 
-                    let barW = max(1.0, w / Double(amps.count))
-                    for (i, amp) in amps.enumerated() {
-                        let x = Double(i) * barW
+                    let pixelCount = Int(w)
+                    for px in 0..<pixelCount {
+                        let srcIdx = Double(px) / w * Double(amps.count)
+                        let lo = Int(srcIdx)
+                        let hi = min(lo + 1, amps.count - 1)
+                        let frac = Float(srcIdx - Double(lo))
+                        let amp = amps[lo] * (1 - frac) + amps[hi] * frac
+
                         let norm = Double(amp * ampScale)
                         let barH = max(norm * h * 0.92, 0.5)
-                        let sampleTime = Double(i) / Double(amps.count) * totalDur
+                        let sampleTime = Double(px) / w * totalDur
                         let dominantSeg = segs.first { seg in
                             let t0 = seg.timestamp.timeIntervalSince(capture.date)
                             let t1 = seg.endTime.timeIntervalSince(capture.date)
@@ -266,7 +271,7 @@ struct NoiseAnalysisView: View {
                         let barColor = dominantSeg.map { noiseColor($0.noiseType).opacity(0.75) }
                             ?? AppColors.primary.opacity(0.45)
                         var p = Path()
-                        p.addRect(CGRect(x: x, y: midY - barH / 2, width: barW, height: barH))
+                        p.addRect(CGRect(x: Double(px), y: midY - barH / 2, width: 1, height: barH))
                         context.fill(p, with: .color(barColor))
                     }
 
