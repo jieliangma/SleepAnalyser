@@ -17,7 +17,8 @@ struct NoiseAnalysisView: View {
     @State private var toolMode: [UUID: WaveformTool] = [:]
     @State private var commandKeyDown = false
     @State private var commandMonitor: Any?
-    @State private var hoveredCaptureId: UUID?
+    @State private var hoveredCardId: UUID?
+    @State private var hoveredWaveformId: UUID?
     @State private var scrollOffset: [UUID: CGFloat] = [:]
 
     enum WaveformTool { case select, pan }
@@ -50,14 +51,6 @@ struct NoiseAnalysisView: View {
                 if cmd != commandKeyDown {
                     DispatchQueue.main.async {
                         commandKeyDown = cmd
-                        if !cmd {
-                            toolMode.removeAll()
-                            if hoveredCaptureId != nil {
-                                NSCursor.iBeam.set()
-                            } else {
-                                NSCursor.arrow.set()
-                            }
-                        }
                     }
                 }
                 return event
@@ -217,22 +210,26 @@ struct NoiseAnalysisView: View {
                         .font(.system(size: 11)).foregroundStyle(AppColors.primary)
                 }
                 .buttonStyle(.plain)
-                if commandKeyDown && hoveredCaptureId == cap.id {
+                if commandKeyDown && hoveredCardId == cap.id {
                     Button {
                         toolMode[cap.id] = .select
-                        NSCursor.iBeam.set()
                     } label: {
                         Image(systemName: "text.cursor")
                             .font(.system(size: 11))
+                            .padding(4)
+                            .background(toolMode[cap.id] == .select ? AppColors.primary.opacity(0.2) : Color.clear)
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
                             .foregroundStyle(toolMode[cap.id] == .select ? AppColors.primary : AppColors.textTertiary)
                     }
                     .buttonStyle(.plain)
                     Button {
                         toolMode[cap.id] = .pan
-                        NSCursor.openHand.set()
                     } label: {
                         Image(systemName: "hand.draw")
                             .font(.system(size: 11))
+                            .padding(4)
+                            .background(toolMode[cap.id] == .pan ? AppColors.primary.opacity(0.2) : Color.clear)
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
                             .foregroundStyle(toolMode[cap.id] == .pan ? AppColors.primary : AppColors.textTertiary)
                     }
                     .buttonStyle(.plain)
@@ -261,6 +258,9 @@ struct NoiseAnalysisView: View {
         }
         .background(AppColors.surface)
         .clipShape(RoundedRectangle(cornerRadius: AppSpacing.cardCornerRadius))
+        .onHover { inside in
+            hoveredCardId = inside ? cap.id : nil
+        }
         .onAppear {
             if ampCache[cap.id] == nil {
                 ampCache[cap.id] = appState.noiseCaptureRecorder.loadAmplitudes(from: cap.directoryURL)
@@ -334,16 +334,14 @@ struct NoiseAnalysisView: View {
                 .frame(width: totalW, height: 100)
                 .contentShape(Rectangle())
                 .onHover { inside in
+                    hoveredWaveformId = inside ? capture.id : nil
                     if inside {
-                        hoveredCaptureId = capture.id
-                        let mode = toolMode[capture.id]
-                        if mode == .pan {
+                        if toolMode[capture.id] == .pan {
                             NSCursor.openHand.set()
                         } else {
                             NSCursor.iBeam.set()
                         }
                     } else {
-                        if hoveredCaptureId == capture.id { hoveredCaptureId = nil }
                         NSCursor.arrow.set()
                     }
                 }
