@@ -3,8 +3,7 @@ import Charts
 
 struct AudioRecordingsView: View {
     @Environment(AppState.self) private var appState
-    @State private var recordings: [(sessionId: String, url: URL, size: Int64, date: Date)] = []
-    @State private var selectedRecording: URL?
+    @State private var recordings: [(sessionId: String, url: URL, size: Int64, date: Date, segmentCount: Int)] = []
     @State private var selectedSessionId: String?
     @State private var events: [AudioEvent] = []
     @State private var showEventEditor = false
@@ -18,8 +17,8 @@ struct AudioRecordingsView: View {
                     Spacer()
                 }
 
-                if let selectedRecording, let selectedSessionId {
-                    playerSection(url: selectedRecording, sessionId: selectedSessionId)
+                if let selectedSessionId {
+                    playerSection(sessionId: selectedSessionId)
                 }
 
                 if recordings.isEmpty {
@@ -47,32 +46,44 @@ struct AudioRecordingsView: View {
         }
     }
 
-    private func recordingCard(_ rec: (sessionId: String, url: URL, size: Int64, date: Date)) -> some View {
+    private func recordingCard(_ rec: (sessionId: String, url: URL, size: Int64, date: Date, segmentCount: Int)) -> some View {
         HStack(spacing: AppSpacing.md) {
             Image(systemName: "waveform.circle.fill")
                 .font(.system(size: 28)).foregroundStyle(AppColors.primary)
             VStack(alignment: .leading, spacing: 2) {
                 Text(rec.date, style: .date).font(AppTypography.headline).foregroundStyle(AppColors.textPrimary)
-                Text(formatSize(rec.size)).font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
+                HStack(spacing: AppSpacing.sm) {
+                    Text(formatSize(rec.size)).font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
+                    if rec.segmentCount > 1 {
+                        Text("\(rec.segmentCount) segments").font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
+                    }
+                }
             }
             Spacer()
             Button {
-                selectedRecording = rec.url
-                selectedSessionId = rec.sessionId
-                Task {
-                    if let uuid = UUID(uuidString: rec.sessionId) {
-                        events = (try? await appState.sessionRepo.getEvents(forSession: uuid)) ?? []
+                selectedSessionId = selectedSessionId == rec.sessionId ? nil : rec.sessionId
+                if selectedSessionId != nil {
+                    Task {
+                        if let uuid = UUID(uuidString: rec.sessionId) {
+                            events = (try? await appState.sessionRepo.getEvents(forSession: uuid)) ?? []
+                            let segments = appState.recordingManager.segmentURLs(for: uuid)
+                            appState.audioPlayer.toggleSegments(segments, eventId: uuid)
+                        }
                     }
+                } else {
+                    appState.audioPlayer.stop()
                 }
             } label: {
-                Image(systemName: selectedRecording == rec.url ? "stop.circle.fill" : "play.circle.fill")
+                Image(systemName: selectedSessionId == rec.sessionId ? "stop.circle.fill" : "play.circle.fill")
                     .font(.system(size: 24)).foregroundStyle(AppColors.primary)
             }
             .buttonStyle(.plain)
             Button {
-                appState.recordingManager.deleteClip(at: rec.url)
+                if let uuid = UUID(uuidString: rec.sessionId) {
+                    appState.recordingManager.deleteNightRecording(sessionId: uuid)
+                }
                 recordings = appState.recordingManager.allRecordings()
-                if selectedRecording == rec.url { selectedRecording = nil }
+                if selectedSessionId == rec.sessionId { selectedSessionId = nil }
             } label: {
                 Image(systemName: "trash").font(.system(size: 14)).foregroundStyle(AppColors.error.opacity(0.7))
             }
@@ -83,10 +94,11 @@ struct AudioRecordingsView: View {
         .clipShape(RoundedRectangle(cornerRadius: AppSpacing.cardCornerRadius))
     }
 
-    private func playerSection(url: URL, sessionId: String) -> some View {
-        VStack(spacing: AppSpacing.md) {
+    private func playerSection(sessionId: String) -> some View {
+        let segURLs = UUID(uuidString: sessionId).map { appState.recordingManager.segmentURLs(for: $0) } ?? []
+        return VStack(spacing: AppSpacing.md) {
             waveformView
-            playbackControls(url: url)
+            playbackControls(segments: segURLs, sessionId: sessionId)
             if !events.isEmpty { eventMarkersSection }
         }
         .padding(AppSpacing.cardPadding)
@@ -135,12 +147,14 @@ struct AudioRecordingsView: View {
         }
     }
 
-    private func playbackControls(url: URL) -> some View {
+    private func playbackControls(segments: [URL], sessionId: String) -> some View {
         HStack {
             Text(DurationFormatter.format(appState.audioPlayer.currentTime, style: .compact))
                 .font(AppTypography.caption).foregroundStyle(AppColors.textTertiary).frame(width: 50)
             Button {
-                appState.audioPlayer.toggle(url: url)
+                if let uuid = UUID(uuidString: sessionId) {
+                    appState.audioPlayer.toggleSegments(segments, eventId: uuid)
+                }
             } label: {
                 Image(systemName: appState.audioPlayer.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                     .font(.system(size: 32)).foregroundStyle(AppColors.primary)
