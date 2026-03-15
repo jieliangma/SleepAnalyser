@@ -70,6 +70,35 @@ final class NoiseSeparatorBridge: @unchecked Sendable {
         }
         return output
     }
+
+    struct NoiseLayer {
+        let type: NoiseTypeLabel
+        let confidence: Float
+        let energy: Float
+    }
+
+    func decomposeMultiLayer(samples: [Float], sampleRate: Float = 16000) -> [NoiseLayer] {
+        let result = samples.withUnsafeBufferPointer { buf in
+            ns_decompose_multilayer(&state, buf.baseAddress, Int32(buf.count), sampleRate)
+        }
+        var layers: [NoiseLayer] = []
+        for i in 0..<Int(result.layer_count) {
+            let layer: ns_layer_t
+            switch i {
+            case 0: layer = result.layers.0
+            case 1: layer = result.layers.1
+            case 2: layer = result.layers.2
+            case 3: layer = result.layers.3
+            default: continue
+            }
+            layers.append(NoiseLayer(
+                type: NoiseTypeLabel(rawCType: layer.type),
+                confidence: layer.confidence,
+                energy: layer.energy
+            ))
+        }
+        return layers
+    }
 }
 
 struct NoiseBandEnergy {

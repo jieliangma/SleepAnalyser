@@ -180,3 +180,4 @@
 "noise.startCapture" = "开始采集";
 "noise.stopCapture" = "停止采集";
 "ml.export" = "导出训练数据";
+"noise.confirmAll" = "全部确认并训练";

@@ -284,3 +284,83 @@ void ns_extract_band(
 
     free(real); free(imag);
 }
+
+ns_decomposition_t ns_decompose_multilayer(
+    ns_state_t *state, const float *samples, int count, float sample_rate)
+{
+    ns_decomposition_t result;
+    memset(&result, 0, sizeof(result));
+    if (count < 4) return result;
+
+    typedef struct { float lo; float hi; ns_noise_type_t primary; ns_noise_type_t secondary; } BandProfile;
+    BandProfile profiles[] = {
+        {20,   80,  NS_NOISE_WIND,       NS_NOISE_RAIN},
+        {80,  250,  NS_NOISE_TRAFFIC,    NS_NOISE_MOTORCYCLE},
+        {250, 500,  NS_NOISE_MOTORCYCLE, NS_NOISE_HVAC},
+        {500, 4000, NS_NOISE_SPEECH,     NS_NOISE_UNKNOWN},
+        {80,  2000, NS_NOISE_HVAC,       NS_NOISE_TRAFFIC},
+    };
+    int n_profiles = sizeof(profiles) / sizeof(profiles[0]);
+
+    float *band_buf = (float *)calloc(count, sizeof(float));
+    if (!band_buf) return result;
+
+    float total_energy = 0;
+    for (int i = 0; i < count; i++) total_energy += samples[i] * samples[i];
+    total_energy = sqrtf(total_energy / (float)count);
+    if (total_energy < 0.003f) { free(band_buf); return result; }
+
+    int found_types[NS_NOISE_COUNT];
+    float found_energy[NS_NOISE_COUNT];
+    float found_conf[NS_NOISE_COUNT];
+    memset(found_types, 0, sizeof(found_types));
+    memset(found_energy, 0, sizeof(found_energy));
+    memset(found_conf, 0, sizeof(found_conf));
+
+    for (int p = 0; p < n_profiles; p++) {
+        ns_extract_band(samples, count, sample_rate, profiles[p].lo, profiles[p].hi, band_buf);
+        float band_rms = 0;
+        for (int i = 0; i < count; i++) band_rms += band_buf[i] * band_buf[i];
+        band_rms = sqrtf(band_rms / (float)count);
+
+        float ratio = band_rms / total_energy;
+        if (ratio < 0.15f) continue;
+
+        ns_band_energy_t be = ns_compute_band_energy(band_buf, count, sample_rate);
+        float crest = ns_compute_crest_factor(band_buf, count);
+        int stationary = ns_is_stationary(state);
+        ns_noise_type_t detected = ns_classify_noise(&be, crest, stationary);
+
+        if (detected == NS_NOISE_QUIET || detected == NS_NOISE_UNKNOWN) {
+            detected = profiles[p].primary;
+        }
+
+        if (band_rms > found_energy[detected]) {
+            found_types[detected] = 1;
+            found_energy[detected] = band_rms;
+            found_conf[detected] = ratio > 0.4f ? 0.8f : (ratio > 0.25f ? 0.6f : 0.4f);
+        }
+    }
+
+    for (int t = 0; t < NS_NOISE_COUNT && result.layer_count < NS_MAX_LAYERS; t++) {
+        if (found_types[t] && t != NS_NOISE_QUIET) {
+            result.layers[result.layer_count].type = (ns_noise_type_t)t;
+            result.layers[result.layer_count].confidence = found_conf[t];
+            result.layers[result.layer_count].energy = found_energy[t];
+            result.layer_count++;
+        }
+    }
+
+    for (int i = 0; i < result.layer_count - 1; i++) {
+        for (int j = i + 1; j < result.layer_count; j++) {
+            if (result.layers[j].energy > result.layers[i].energy) {
+                ns_layer_t tmp = result.layers[i];
+                result.layers[i] = result.layers[j];
+                result.layers[j] = tmp;
+            }
+        }
+    }
+
+    free(band_buf);
+    return result;
+}

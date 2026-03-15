@@ -103,7 +103,8 @@ struct NoiseAnalysisView: View {
             .padding(.horizontal, AppSpacing.cardPadding).padding(.top, AppSpacing.sm).padding(.bottom, 4)
 
             waveformView(amps: amps, segs: segs, capture: cap)
-            labelRow(segs: segs, capture: cap, amps: amps)
+            labelRows(segs: segs, capture: cap, amps: amps)
+            confirmBar(capture: cap, segs: segs)
             playbackBar(capture: cap)
         }
         .background(AppColors.surface)
@@ -178,35 +179,91 @@ struct NoiseAnalysisView: View {
 
     // MARK: - Label Row
 
-    private func labelRow(segs: [NoiseSegment], capture: NoiseCaptureRecorder.CaptureInfo, amps: [Float]) -> some View {
-        GeometryReader { geo in
-            let w = geo.size.width
-            let totalDur = appState.audioPlayer.duration > 0
-                ? appState.audioPlayer.duration
-                : max(1, Double(amps.count) * 0.3)
+    private func labelRows(segs: [NoiseSegment], capture: NoiseCaptureRecorder.CaptureInfo, amps: [Float]) -> some View {
+        let maxLayer = segs.map(\.layer).max() ?? 0
+        let totalDur = appState.audioPlayer.duration > 0
+            ? appState.audioPlayer.duration
+            : max(1, Double(amps.count) * 0.3)
 
-            ZStack(alignment: .leading) {
-                ForEach(segs) { seg in
-                    let t0 = seg.timestamp.timeIntervalSince(capture.date)
-                    let t1 = seg.endTime.timeIntervalSince(capture.date)
-                    let x = max(0, t0 / totalDur * w)
-                    let segW = max(30, min(w - x, (t1 - t0) / totalDur * w))
-                    let typeLabel = NoiseTypeLabel(rawValue: seg.noiseType) ?? .unknown
+        return VStack(spacing: 1) {
+            ForEach(0...maxLayer, id: \.self) { layerIdx in
+                let layerSegs = segs.filter { $0.layer == layerIdx }
+                GeometryReader { geo in
+                    let w = geo.size.width
+                    ZStack(alignment: .leading) {
+                        ForEach(layerSegs) { seg in
+                            let t0 = seg.timestamp.timeIntervalSince(capture.date)
+                            let t1 = seg.endTime.timeIntervalSince(capture.date)
+                            let x = max(0, t0 / totalDur * w)
+                            let segW = max(28, min(w - x, (t1 - t0) / totalDur * w))
+                            let typeLabel = NoiseTypeLabel(rawValue: seg.noiseType) ?? .unknown
 
-                    HStack(spacing: 2) {
-                        RoundedRectangle(cornerRadius: 1).fill(noiseColor(seg.noiseType)).frame(width: 3)
-                        Text(typeLabel.displayName)
-                            .font(.system(size: 9)).foregroundStyle(AppColors.textSecondary)
-                            .lineLimit(1)
+                            HStack(spacing: 2) {
+                                RoundedRectangle(cornerRadius: 1).fill(noiseColor(seg.noiseType)).frame(width: 3)
+                                Text(typeLabel.displayName)
+                                    .font(.system(size: 9)).foregroundStyle(AppColors.textSecondary).lineLimit(1)
+                                if seg.isConfirmed {
+                                    Image(systemName: "checkmark").font(.system(size: 7)).foregroundStyle(AppColors.success)
+                                }
+                            }
+                            .frame(width: segW, height: 14, alignment: .leading)
+                            .background(noiseColor(seg.noiseType).opacity(0.08))
+                            .clipShape(RoundedRectangle(cornerRadius: 2))
+                            .offset(x: x)
+                            .onTapGesture { editingSegment = seg }
+                        }
                     }
-                    .frame(width: segW, height: 16, alignment: .leading)
-                    .offset(x: x)
-                    .onTapGesture { editingSegment = seg }
                 }
+                .frame(height: 16)
             }
         }
-        .frame(height: 20)
         .padding(.horizontal, AppSpacing.cardPadding)
+    }
+
+    private func confirmBar(capture: NoiseCaptureRecorder.CaptureInfo, segs: [NoiseSegment]) -> some View {
+        let unconfirmed = segs.filter { !$0.isConfirmed }
+        return Group {
+            if !unconfirmed.isEmpty {
+                HStack {
+                    Spacer()
+                    Button {
+                        Task { await confirmAll(capture: capture) }
+                    } label: {
+                        Label(L10n.confirmAllNoise, systemImage: "checkmark.circle.fill")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(AppColors.success)
+                            .padding(.horizontal, 12).padding(.vertical, 5)
+                            .background(AppColors.success.opacity(0.1))
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, AppSpacing.cardPadding).padding(.vertical, 4)
+            }
+        }
+    }
+
+    private func confirmAll(capture: NoiseCaptureRecorder.CaptureInfo) async {
+        guard var segs = segCache[capture.id] else { return }
+        let context = appState.persistence.newBackgroundContext()
+        for i in segs.indices where !segs[i].isConfirmed {
+            segs[i].isConfirmed = true
+            let predicate = #Predicate<SDNoiseSegment> { $0.id == segs[i].id }
+            if let sd = try? context.fetch(FetchDescriptor(predicate: predicate)).first {
+                sd.isConfirmed = true
+            }
+            appState.mlRetrainer.addConfirmedSample(
+                noiseType: segs[i].displayType,
+                features: ["rms_energy": pow(10, segs[i].energyDB / 20)]
+            )
+        }
+        try? context.save()
+        await MainActor.run {
+            segCache[capture.id] = segs
+            for seg in segs {
+                if let idx = segments.firstIndex(where: { $0.id == seg.id }) { segments[idx] = seg }
+            }
+        }
     }
 
     // MARK: - Playback
@@ -294,32 +351,39 @@ struct NoiseAnalysisView: View {
                     guard isCapturing else { break }
                     appState.noiseCaptureRecorder.feedAudio(frame.samples)
                     separator.updateNoiseFloor(samples: frame.samples)
-                    let (noiseType, conf) = separator.classifyNoise(samples: frame.samples)
+                    let layers = separator.decomposeMultiLayer(samples: frame.samples)
                     let bands = separator.computeBandEnergy(samples: frame.samples)
                     let db = bands.totalRMS > 0 ? 20.0 * log10(Double(bands.totalRMS)) : -100
-                    await MainActor.run { liveNoiseType = noiseType.rawValue; liveDB = db }
+                    await MainActor.run {
+                        liveNoiseType = layers.first?.type.rawValue ?? "quiet"
+                        liveDB = db
+                    }
 
-                    if noiseType != .quiet && conf > 0.4 {
-                        let now = Date()
-                        if now.timeIntervalSince(segStart) > 2 {
+                    let now = Date()
+                    if now.timeIntervalSince(segStart) > 2 && !layers.isEmpty {
+                        let context = appState.persistence.newBackgroundContext()
+                        for (layerIdx, layer) in layers.enumerated() {
                             let seg = NoiseSegment(
                                 sessionId: captureId, timestamp: segStart, endTime: now,
-                                noiseType: noiseType.rawValue, confidence: Double(conf), energyDB: db
+                                noiseType: layer.type.rawValue, confidence: Double(layer.confidence),
+                                energyDB: Double(layer.energy > 0 ? 20 * log10(layer.energy) : -100),
+                                layer: layerIdx
                             )
-                            let context = appState.persistence.newBackgroundContext()
                             context.insert(SDNoiseSegment(
                                 id: seg.id, sessionId: seg.sessionId, timestamp: seg.timestamp,
                                 endTime: seg.endTime, noiseType: seg.noiseType, confidence: seg.confidence,
-                                energyDB: seg.energyDB
+                                energyDB: seg.energyDB, layer: layerIdx
                             ))
-                            try? context.save()
                             await MainActor.run {
                                 segments.append(seg)
                                 segCache[captureId, default: []].append(seg)
                             }
-                            segStart = now
                         }
-                    } else { segStart = Date() }
+                        try? context.save()
+                        segStart = now
+                    } else if layers.isEmpty {
+                        segStart = Date()
+                    }
                 }
             } catch {}
             appState.captureService.stopCapture()

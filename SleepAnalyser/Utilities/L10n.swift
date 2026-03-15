@@ -222,4 +222,5 @@ enum L10n {
     static var startCapture: String { s("noise.startCapture") }
     static var stopCapture: String { s("noise.stopCapture") }
     static var exportMLData: String { s("ml.export") }
+    static var confirmAllNoise: String { s("noise.confirmAll") }
 }

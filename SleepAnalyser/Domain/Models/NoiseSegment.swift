@@ -11,10 +11,11 @@ struct NoiseSegment: Identifiable, Codable, Sendable {
     var audioClipURL: URL?
     var isConfirmed: Bool
     var userLabel: String?
+    var layer: Int
 
     init(id: UUID = UUID(), sessionId: UUID, timestamp: Date, endTime: Date,
          noiseType: String, confidence: Double = 0.5, energyDB: Double = -50,
-         audioClipURL: URL? = nil, isConfirmed: Bool = false, userLabel: String? = nil) {
+         audioClipURL: URL? = nil, isConfirmed: Bool = false, userLabel: String? = nil, layer: Int = 0) {
         self.id = id
         self.sessionId = sessionId
         self.timestamp = timestamp
@@ -25,6 +26,7 @@ struct NoiseSegment: Identifiable, Codable, Sendable {
         self.audioClipURL = audioClipURL
         self.isConfirmed = isConfirmed
         self.userLabel = userLabel
+        self.layer = layer
     }
 
     var duration: TimeInterval { endTime.timeIntervalSince(timestamp) }

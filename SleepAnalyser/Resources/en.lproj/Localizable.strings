@@ -180,3 +180,4 @@
 "noise.startCapture" = "Start Capture";
 "noise.stopCapture" = "Stop Capture";
 "ml.export" = "Export Training Data";
+"noise.confirmAll" = "Confirm All & Train";

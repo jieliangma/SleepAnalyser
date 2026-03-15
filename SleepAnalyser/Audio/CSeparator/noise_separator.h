@@ -10,17 +10,7 @@ extern "C" {
 #define NS_MAX_FFT_SIZE 2048
 #define NS_MAX_BANDS 8
 #define NS_LABEL_LEN 32
-
-typedef struct {
-    float sub_bass;
-    float bass;
-    float low_mid;
-    float mid;
-    float high_mid;
-    float presence;
-    float brilliance;
-    float total_rms;
-} ns_band_energy_t;
+#define NS_MAX_LAYERS 4
 
 typedef enum {
     NS_NOISE_QUIET = 0,
@@ -33,6 +23,28 @@ typedef enum {
     NS_NOISE_UNKNOWN,
     NS_NOISE_COUNT
 } ns_noise_type_t;
+
+typedef struct {
+    float sub_bass;
+    float bass;
+    float low_mid;
+    float mid;
+    float high_mid;
+    float presence;
+    float brilliance;
+    float total_rms;
+} ns_band_energy_t;
+
+typedef struct {
+    ns_noise_type_t type;
+    float confidence;
+    float energy;
+} ns_layer_t;
+
+typedef struct {
+    ns_layer_t layers[NS_MAX_LAYERS];
+    int layer_count;
+} ns_decomposition_t;
 
 typedef struct {
     ns_noise_type_t type;
@@ -79,6 +91,9 @@ int ns_is_stationary(const ns_state_t *state);
 void ns_extract_band(
     const float *input, int count, float sample_rate,
     float low_hz, float high_hz, float *output);
+
+ns_decomposition_t ns_decompose_multilayer(
+    ns_state_t *state, const float *samples, int count, float sample_rate);
 
 #ifdef __cplusplus
 }
