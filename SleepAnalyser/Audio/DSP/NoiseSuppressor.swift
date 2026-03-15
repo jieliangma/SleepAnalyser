@@ -23,7 +23,7 @@ final class NoiseSuppressor: @unchecked Sendable {
             return samples
         }
 
-        var updatedFloor = noiseFloor!
+        guard var updatedFloor = noiseFloor else { return samples }
         for i in 0..<min(magnitude.count, updatedFloor.count) {
             updatedFloor[i] = smoothingAlpha * updatedFloor[i] + (1 - smoothingAlpha) * min(magnitude[i], updatedFloor[i] * 3)
         }

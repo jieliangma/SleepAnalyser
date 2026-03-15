@@ -116,6 +116,10 @@ dep_proxy = sid("dep_proxy")
 xcassets_fid = sid("fr_Assets.xcassets")
 xcassets_bf = sid("bf_Assets.xcassets")
 
+ml_models = ["SleepStageClassifier", "SnoreDetector", "NoiseContextClassifier"]
+ml_fids = {m: sid(f"fr_{m}.mlmodelc") for m in ml_models}
+ml_bfs = {m: sid(f"bf_{m}.mlmodelc") for m in ml_models}
+
 app_swift = [p for p in obj.file_refs if p.startswith("SleepAnalyser/") and p.endswith(".swift")]
 app_plist = [p for p in obj.file_refs if p.startswith("SleepAnalyser/") and p.endswith(".plist")]
 app_strings = [p for p in obj.file_refs if p.startswith("SleepAnalyser/") and p.endswith(".strings")]
@@ -146,6 +150,8 @@ for key, (bid, fid) in sorted(obj.build_files.items()):
     fname = os.path.basename(key.split("_", 1)[1])
     w(f"\t\t{bid} = {{isa = PBXBuildFile; fileRef = {fid}; }};")
 w(f"\t\t{xcassets_bf} = {{isa = PBXBuildFile; fileRef = {xcassets_fid}; }};")
+for m in ml_models:
+    w(f"\t\t{ml_bfs[m]} = {{isa = PBXBuildFile; fileRef = {ml_fids[m]}; }};")
 w("/* End PBXBuildFile section */")
 w()
 
@@ -168,6 +174,8 @@ for rel_path, (fid, ftype) in sorted(obj.file_refs.items()):
     fname = os.path.basename(rel_path)
     w(f"\t\t{fid} = {{isa = PBXFileReference; lastKnownFileType = {ftype}; path = \"{fname}\"; sourceTree = \"<group>\"; }};")
 w(f"\t\t{xcassets_fid} = {{isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = \"<group>\"; }};")
+for m in ml_models:
+    w(f"\t\t{ml_fids[m]} = {{isa = PBXFileReference; lastKnownFileType = folder; path = \"SleepAnalyser/Resources/ML/{m}.mlmodelc\"; sourceTree = SOURCE_ROOT; }};")
 w("/* End PBXFileReference section */")
 w()
 
@@ -205,6 +213,10 @@ for rel_dir in sorted(obj.groups.keys()):
     
     if rel_dir == os.path.join("SleepAnalyser", "Resources"):
         ordered_ids.append(xcassets_fid)
+
+    if rel_dir == os.path.join("SleepAnalyser", "Resources", "ML"):
+        for m in ml_models:
+            ordered_ids.append(ml_fids[m])
     
     children = ", ".join(ordered_ids) if len(ordered_ids) <= 3 else ",\n".join(f"\t\t\t\t{c}" for c in ordered_ids)
     
@@ -275,6 +287,8 @@ w(f"\t\t\tbuildActionMask = 2147483647;")
 res_bids = [obj.build_files["app_res_" + f][0] for f in app_plist]
 res_bids += [obj.build_files["app_res_" + f][0] for f in app_strings]
 res_bids.append(xcassets_bf)
+for m in ml_models:
+    res_bids.append(ml_bfs[m])
 w(f"\t\t\tfiles = ({', '.join(res_bids)});")
 w(f"\t\t\trunOnlyForDeploymentPostprocessing = 0;")
 w(f"\t\t}};")

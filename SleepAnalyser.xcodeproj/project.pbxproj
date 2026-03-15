@@ -138,6 +138,9 @@
 		4B9A6C5A8DA86D173B211F37 = {isa = PBXBuildFile; fileRef = 7F6B93D8C15088CF24A876D2; };
 		06076A6DB9050C11EDF635D3 = {isa = PBXBuildFile; fileRef = 0E44E6696464499369DF7AFC; };
 		30871166680E52097765E99E = {isa = PBXBuildFile; fileRef = DA1C88A5832AA6AB8F1093D4; };
+		70802DC999BBECB8BCC571B5 = {isa = PBXBuildFile; fileRef = ECFDF5EE31FFA474A0A06375; };
+		5AE2C1A1FCB95CDCF4B83744 = {isa = PBXBuildFile; fileRef = 542197BE2CA99D5F88C7E62C; };
+		0A37B9F997E2C5216DF31A51 = {isa = PBXBuildFile; fileRef = 9EFC197353130C815DC6CE6B; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -286,6 +289,9 @@
 		7F6B93D8C15088CF24A876D2 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MockSessionRepository.swift"; sourceTree = "<group>"; };
 		0E44E6696464499369DF7AFC = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TestAudioFixtures.swift"; sourceTree = "<group>"; };
 		DA1C88A5832AA6AB8F1093D4 = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		ECFDF5EE31FFA474A0A06375 = {isa = PBXFileReference; lastKnownFileType = folder; path = "SleepAnalyser/Resources/ML/SleepStageClassifier.mlmodelc"; sourceTree = SOURCE_ROOT; };
+		542197BE2CA99D5F88C7E62C = {isa = PBXFileReference; lastKnownFileType = folder; path = "SleepAnalyser/Resources/ML/SnoreDetector.mlmodelc"; sourceTree = SOURCE_ROOT; };
+		9EFC197353130C815DC6CE6B = {isa = PBXFileReference; lastKnownFileType = folder; path = "SleepAnalyser/Resources/ML/NoiseContextClassifier.mlmodelc"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -791,7 +797,7 @@
 		57135DEEBA5CEFA8CA053F0B = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (D634FB1F07406661AEA24569, 8C0934D2A524630007CFD67D, 19BB1BBB47E190BF27ED9697, 0CD764F490D33446C8149FBC, 1B2CC43746839990603636A6, 2EA5239180F77D4E130DFE98, D73F283FFB79A33B1E22C33F, 30871166680E52097765E99E);
+			files = (D634FB1F07406661AEA24569, 8C0934D2A524630007CFD67D, 19BB1BBB47E190BF27ED9697, 0CD764F490D33446C8149FBC, 1B2CC43746839990603636A6, 2EA5239180F77D4E130DFE98, D73F283FFB79A33B1E22C33F, 30871166680E52097765E99E, 70802DC999BBECB8BCC571B5, 5AE2C1A1FCB95CDCF4B83744, 0A37B9F997E2C5216DF31A51);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
