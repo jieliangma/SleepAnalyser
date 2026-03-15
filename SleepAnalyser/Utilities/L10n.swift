@@ -14,6 +14,7 @@ enum L10n {
     static var liveSession: String { s("nav.liveSession") }
     static var morningReport: String { s("nav.morningReport") }
     static var recordings: String { s("nav.recordings") }
+    static var noiseAnalysis: String { s("nav.noiseAnalysis") }
     static var trends: String { s("nav.trends") }
     static var profiles: String { s("nav.profiles") }
     static var settings: String { s("nav.settings") }
@@ -209,4 +210,7 @@ enum L10n {
     static var eventTypeLabel: String { s("event.typeLabel") }
     static var noteLabel: String { s("event.noteLabel") }
     static var notePlaceholder: String { s("event.notePlaceholder") }
+    static var noNoiseSegments: String { s("noise.none") }
+    static var noiseFilterAll: String { s("noise.filterAll") }
+    static var editNoiseSegment: String { s("noise.edit") }
 }

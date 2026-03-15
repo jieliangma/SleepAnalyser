@@ -26,6 +26,10 @@ class PBXObjects:
                 file_type = "text.plist.xml"
             elif rel_path.endswith(".strings"):
                 file_type = "text.plist.strings"
+            elif rel_path.endswith(".c"):
+                file_type = "sourcecode.c.c"
+            elif rel_path.endswith(".h"):
+                file_type = "sourcecode.c.h"
             else:
                 file_type = "text"
         self.file_refs[rel_path] = (fid, file_type)
@@ -52,13 +56,13 @@ def build_group_tree(base_dir, prefix, root_name):
             child_rel = os.path.join(rel_dir, d)
             child_has_files = False
             for _, _, fs in os.walk(os.path.join(ROOT, child_rel)):
-                if any(f.endswith(('.swift', '.plist', '.strings')) for f in fs):
+                if any(f.endswith(('.swift', '.plist', '.strings', '.c', '.h')) for f in fs):
                     child_has_files = True
                     break
             if child_has_files:
                 entries.append(('dir', d, child_rel))
         for f in sorted(filenames):
-            if f.endswith(('.swift', '.plist', '.strings')):
+            if f.endswith(('.swift', '.plist', '.strings', '.c', '.h')):
                 entries.append(('file', f, os.path.join(rel_dir, f)))
         tree[rel_dir] = entries
     return tree
@@ -121,11 +125,14 @@ ml_fids = {m: sid(f"fr_{m}.mlmodelc") for m in ml_models}
 ml_bfs = {m: sid(f"bf_{m}.mlmodelc") for m in ml_models}
 
 app_swift = [p for p in obj.file_refs if p.startswith("SleepAnalyser/") and p.endswith(".swift")]
+app_c = [p for p in obj.file_refs if p.startswith("SleepAnalyser/") and p.endswith(".c")]
 app_plist = [p for p in obj.file_refs if p.startswith("SleepAnalyser/") and p.endswith(".plist")]
 app_strings = [p for p in obj.file_refs if p.startswith("SleepAnalyser/") and p.endswith(".strings")]
 test_swift = [p for p in obj.file_refs if p.startswith("SleepAnalyserTests/") and p.endswith(".swift")]
 
 for f in app_swift:
+    obj.get_build_file(f, "app_src")
+for f in app_c:
     obj.get_build_file(f, "app_src")
 for f in app_plist:
     obj.get_build_file(f, "app_res")
@@ -300,7 +307,7 @@ w(f"\t\t{app_src_phase} = {{")
 w(f"\t\t\tisa = PBXSourcesBuildPhase;")
 w(f"\t\t\tbuildActionMask = 2147483647;")
 w(f"\t\t\tfiles = (")
-for f in sorted(app_swift):
+for f in sorted(app_swift + app_c):
     bid = obj.build_files["app_src_" + f][0]
     w(f"\t\t\t\t{bid},")
 w(f"\t\t\t);")
@@ -353,7 +360,8 @@ app_extra = """				PRODUCT_BUNDLE_IDENTIFIER = com.sleepanalyser.app;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "SleepAnalyser needs microphone access to analyze your breathing patterns during sleep.";
 				INFOPLIST_KEY_NSMainStoryboardFile = "";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";"""
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				SWIFT_OBJC_BRIDGING_HEADER = "SleepAnalyser/SleepAnalyser-Bridging-Header.h";"""
 
 for cfg_id, name in [(app_dbg, "Debug"), (app_rel, "Release")]:
     w(f"\t\t{cfg_id} = {{")

@@ -15,6 +15,8 @@
 		D73F283FFB79A33B1E22C33F = {isa = PBXBuildFile; fileRef = 8FD92CE1ECCD2B456E33AA61; };
 		8606E855FF730039076CDDFC = {isa = PBXBuildFile; fileRef = D7A2ABB9B229A5301DE4926B; };
 		A49875EF487A92A2CEF47E48 = {isa = PBXBuildFile; fileRef = B4BCD56A69CCFCB094FD21B0; };
+		FEEB1D566F42311B655A575D = {isa = PBXBuildFile; fileRef = A677535E2AE35784097B6622; };
+		51BB8FAAF3052DD9E91EBC93 = {isa = PBXBuildFile; fileRef = 3533E250DB53CC8E4F07D9FD; };
 		EC23924697C8F7E9F8F94163 = {isa = PBXBuildFile; fileRef = 9A1C65099C15F36DB6E76B0D; };
 		C9C6FD66C792EB34A3BFCFC4 = {isa = PBXBuildFile; fileRef = F685F1D11C5F8B7BA83AC035; };
 		44C4C13536F6E474D2E0C82B = {isa = PBXBuildFile; fileRef = 940672CD3228734428E350C2; };
@@ -40,6 +42,7 @@
 		76C991FFCF5717B59F5E6053 = {isa = PBXBuildFile; fileRef = D9079CA9996852AA988DD13D; };
 		0FAC11EB95A63717A6BC4A84 = {isa = PBXBuildFile; fileRef = 0A3E51DDC2C04C188D80FF5F; };
 		0606AE54C0473A6794D613CA = {isa = PBXBuildFile; fileRef = 5907FDE75F7E0C3C222E63DE; };
+		1687049685EA23DF5EE294E7 = {isa = PBXBuildFile; fileRef = 9D6669FB26633F3E5E9A3980; };
 		ADD1E54E143EF09C6698E370 = {isa = PBXBuildFile; fileRef = 63F35835FD0032432D3E4FC1; };
 		E77F20DF85F9B5BAE11E8643 = {isa = PBXBuildFile; fileRef = 2DFFFBB2653F2B662E98C33E; };
 		14612205C2BD9741DC3F09C6 = {isa = PBXBuildFile; fileRef = FC22A28C67DA716A730D0BB7; };
@@ -59,6 +62,7 @@
 		5397ABDD81C8F789A15982E2 = {isa = PBXBuildFile; fileRef = AB57A06E397E24B92514DF01; };
 		86E1D99718A3F02588362384 = {isa = PBXBuildFile; fileRef = 496A8531B8655EED753B4CE3; };
 		36C37EFFAB373E9FC2C4E1E3 = {isa = PBXBuildFile; fileRef = A0E7BB0DD1B1A03006A73CEC; };
+		1C635A8807C7D4F2BE538734 = {isa = PBXBuildFile; fileRef = 7182642BFA2A6E7A3EF445B1; };
 		70C89921024B5C3B94C13525 = {isa = PBXBuildFile; fileRef = 0298EA4ED80A3EB77F10D92A; };
 		3600A5013AD865D0E503639C = {isa = PBXBuildFile; fileRef = D41B0D2BD853C7719AD25629; };
 		E51B038D52FF22937FB80705 = {isa = PBXBuildFile; fileRef = 49115B9B7B3E0141072F2D5A; };
@@ -92,6 +96,7 @@
 		D3710A8E8B9AF91531389B84 = {isa = PBXBuildFile; fileRef = 609D7C7D736C75864126B8D2; };
 		C4383DB1B69AC073C7544967 = {isa = PBXBuildFile; fileRef = 3C420E3FEB304391BF44BB7B; };
 		708D27ED098C3DEDAB5612B6 = {isa = PBXBuildFile; fileRef = EC2B4CCCD2BC27884A735175; };
+		ACCF755F1B37FBFC1A909D67 = {isa = PBXBuildFile; fileRef = C30C5E8E87277A7BEE4FBD9F; };
 		B588202CED89B356604A7F5E = {isa = PBXBuildFile; fileRef = 5F9001A8C24AA413302005D5; };
 		62715958867D3D4B1D21F506 = {isa = PBXBuildFile; fileRef = 26F51C1AADE6FAB86EE58C2D; };
 		4665ADEA6F325262972DB701 = {isa = PBXBuildFile; fileRef = 7290B19BE8B5443A8042DEB8; };
@@ -159,6 +164,10 @@
 		448B690A40FD63CC72850FFB = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D7A2ABB9B229A5301DE4926B = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState.swift"; sourceTree = "<group>"; };
 		B4BCD56A69CCFCB094FD21B0 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepAnalyserApp.swift"; sourceTree = "<group>"; };
+		A677535E2AE35784097B6622 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoiseSeparatorBridge.swift"; sourceTree = "<group>"; };
+		A56C504FE6B614194C578D3D = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "noise_separator_bridge.h"; sourceTree = "<group>"; };
+		3533E250DB53CC8E4F07D9FD = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "noise_separator.c"; sourceTree = "<group>"; };
+		4C73DCE8B313EC5F89C4A52E = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "noise_separator.h"; sourceTree = "<group>"; };
 		9A1C65099C15F36DB6E76B0D = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AVAudioCaptureService.swift"; sourceTree = "<group>"; };
 		F685F1D11C5F8B7BA83AC035 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AVAudioInputDeviceManager.swift"; sourceTree = "<group>"; };
 		940672CD3228734428E350C2 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioTapBufferBridge.swift"; sourceTree = "<group>"; };
@@ -184,6 +193,7 @@
 		D9079CA9996852AA988DD13D = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UserProfileMapper.swift"; sourceTree = "<group>"; };
 		0A3E51DDC2C04C188D80FF5F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SDAudioEvent.swift"; sourceTree = "<group>"; };
 		5907FDE75F7E0C3C222E63DE = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SDCalibration.swift"; sourceTree = "<group>"; };
+		9D6669FB26633F3E5E9A3980 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SDNoiseSegment.swift"; sourceTree = "<group>"; };
 		63F35835FD0032432D3E4FC1 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SDSleepEpoch.swift"; sourceTree = "<group>"; };
 		2DFFFBB2653F2B662E98C33E = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SDSleepSession.swift"; sourceTree = "<group>"; };
 		FC22A28C67DA716A730D0BB7 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SDUserProfile.swift"; sourceTree = "<group>"; };
@@ -203,6 +213,7 @@
 		AB57A06E397E24B92514DF01 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BreathingSample.swift"; sourceTree = "<group>"; };
 		496A8531B8655EED753B4CE3 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FeatureVector.swift"; sourceTree = "<group>"; };
 		A0E7BB0DD1B1A03006A73CEC = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningReport.swift"; sourceTree = "<group>"; };
+		7182642BFA2A6E7A3EF445B1 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoiseSegment.swift"; sourceTree = "<group>"; };
 		0298EA4ED80A3EB77F10D92A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProcessedFrame.swift"; sourceTree = "<group>"; };
 		D41B0D2BD853C7719AD25629 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepEpoch.swift"; sourceTree = "<group>"; };
 		49115B9B7B3E0141072F2D5A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepScore.swift"; sourceTree = "<group>"; };
@@ -236,6 +247,7 @@
 		609D7C7D736C75864126B8D2 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepCycleConstraintEngine.swift"; sourceTree = "<group>"; };
 		3C420E3FEB304391BF44BB7B = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DashboardView.swift"; sourceTree = "<group>"; };
 		EC2B4CCCD2BC27884A735175 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MenuBarView.swift"; sourceTree = "<group>"; };
+		C30C5E8E87277A7BEE4FBD9F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoiseAnalysisView.swift"; sourceTree = "<group>"; };
 		5F9001A8C24AA413302005D5 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProfileListView.swift"; sourceTree = "<group>"; };
 		26F51C1AADE6FAB86EE58C2D = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioRecordingsView.swift"; sourceTree = "<group>"; };
 		7290B19BE8B5443A8042DEB8 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EventEditorView.swift"; sourceTree = "<group>"; };
@@ -266,6 +278,7 @@
 		0AAAFC6CF978A335CC6C9205 = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = "Localizable.strings"; sourceTree = "<group>"; };
 		E3EEBD16098D3E7F20482DB9 = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = "InfoPlist.strings"; sourceTree = "<group>"; };
 		8FD92CE1ECCD2B456E33AA61 = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = "Localizable.strings"; sourceTree = "<group>"; };
+		F7B40909220981A3E8CA42FF = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "SleepAnalyser-Bridging-Header.h"; sourceTree = "<group>"; };
 		09E9D59CCBB31F053DA2BF89 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppConstants.swift"; sourceTree = "<group>"; };
 		4BEEFD6B9CAAC17105BACE74 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Array+Stats.swift"; sourceTree = "<group>"; };
 		E619F7E1A40785B485E8B234 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Sleep.swift"; sourceTree = "<group>"; };
@@ -323,6 +336,7 @@
 				0D4E7C995ED98116DF421F45,
 				15782DF1C262C35606101434,
 				AE15F304FDE1D980870A4C8F,
+				F7B40909220981A3E8CA42FF,
 			);
 			path = "SleepAnalyser";
 			sourceTree = "<group>";
@@ -336,6 +350,7 @@
 		7C1B81EDEAA77613A0CC5EA5 = {
 			isa = PBXGroup;
 			children = (
+				DB0B683C81A97D55984B748D,
 				D55158BA35DD7D943164396F,
 				D196C202B8FE3CA93D2E67D3,
 				2FDEC15082C402785C850A83,
@@ -343,6 +358,23 @@
 				C8F9D9949E4D4D36C52DF9CB,
 			);
 			path = "Audio";
+			sourceTree = "<group>";
+		};
+		DB0B683C81A97D55984B748D = {
+			isa = PBXGroup;
+			children = (
+				BEDD7080C1B78EBE9ECBCFB9,
+				A677535E2AE35784097B6622,
+				3533E250DB53CC8E4F07D9FD,
+				4C73DCE8B313EC5F89C4A52E,
+			);
+			path = "CSeparator";
+			sourceTree = "<group>";
+		};
+		BEDD7080C1B78EBE9ECBCFB9 = {
+			isa = PBXGroup;
+			children = (A56C504FE6B614194C578D3D);
+			path = "include";
 			sourceTree = "<group>";
 		};
 		D55158BA35DD7D943164396F = {
@@ -427,6 +459,7 @@
 			children = (
 				0A3E51DDC2C04C188D80FF5F,
 				5907FDE75F7E0C3C222E63DE,
+				9D6669FB26633F3E5E9A3980,
 				63F35835FD0032432D3E4FC1,
 				2DFFFBB2653F2B662E98C33E,
 				FC22A28C67DA716A730D0BB7,
@@ -473,6 +506,7 @@
 				AB57A06E397E24B92514DF01,
 				496A8531B8655EED753B4CE3,
 				A0E7BB0DD1B1A03006A73CEC,
+				7182642BFA2A6E7A3EF445B1,
 				0298EA4ED80A3EB77F10D92A,
 				D41B0D2BD853C7719AD25629,
 				49115B9B7B3E0141072F2D5A,
@@ -543,6 +577,7 @@
 			children = (
 				6F43DBEE0104C3609F9BD094,
 				7F160EE719E66935C2C524D6,
+				A7089C456C27E371AA7ADC53,
 				EEBDB1C2863D07D86B9D1AAA,
 				ACB5C9F63B8C0EF28D6D57FF,
 				AD11562FFD94E4BA7137000F,
@@ -564,6 +599,12 @@
 			isa = PBXGroup;
 			children = (EC2B4CCCD2BC27884A735175);
 			path = "MenuBar";
+			sourceTree = "<group>";
+		};
+		A7089C456C27E371AA7ADC53 = {
+			isa = PBXGroup;
+			children = (C30C5E8E87277A7BEE4FBD9F);
+			path = "NoiseAnalysis";
 			sourceTree = "<group>";
 		};
 		EEBDB1C2863D07D86B9D1AAA = {
@@ -809,6 +850,8 @@
 			files = (
 				8606E855FF730039076CDDFC,
 				A49875EF487A92A2CEF47E48,
+				FEEB1D566F42311B655A575D,
+				51BB8FAAF3052DD9E91EBC93,
 				EC23924697C8F7E9F8F94163,
 				C9C6FD66C792EB34A3BFCFC4,
 				44C4C13536F6E474D2E0C82B,
@@ -834,6 +877,7 @@
 				76C991FFCF5717B59F5E6053,
 				0FAC11EB95A63717A6BC4A84,
 				0606AE54C0473A6794D613CA,
+				1687049685EA23DF5EE294E7,
 				ADD1E54E143EF09C6698E370,
 				E77F20DF85F9B5BAE11E8643,
 				14612205C2BD9741DC3F09C6,
@@ -853,6 +897,7 @@
 				5397ABDD81C8F789A15982E2,
 				86E1D99718A3F02588362384,
 				36C37EFFAB373E9FC2C4E1E3,
+				1C635A8807C7D4F2BE538734,
 				70C89921024B5C3B94C13525,
 				3600A5013AD865D0E503639C,
 				E51B038D52FF22937FB80705,
@@ -886,6 +931,7 @@
 				D3710A8E8B9AF91531389B84,
 				C4383DB1B69AC073C7544967,
 				708D27ED098C3DEDAB5612B6,
+				ACCF755F1B37FBFC1A909D67,
 				B588202CED89B356604A7F5E,
 				62715958867D3D4B1D21F506,
 				4665ADEA6F325262972DB701,
@@ -990,6 +1036,7 @@
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "SleepAnalyser needs microphone access to analyze your breathing patterns during sleep.";
 				INFOPLIST_KEY_NSMainStoryboardFile = "";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				SWIFT_OBJC_BRIDGING_HEADER = "SleepAnalyser/SleepAnalyser-Bridging-Header.h";
 			};
 			name = Debug;
 		};
@@ -1006,6 +1053,7 @@
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "SleepAnalyser needs microphone access to analyze your breathing patterns during sleep.";
 				INFOPLIST_KEY_NSMainStoryboardFile = "";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				SWIFT_OBJC_BRIDGING_HEADER = "SleepAnalyser/SleepAnalyser-Bridging-Header.h";
 			};
 			name = Release;
 		};
