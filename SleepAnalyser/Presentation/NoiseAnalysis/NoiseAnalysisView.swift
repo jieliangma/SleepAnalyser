@@ -88,7 +88,6 @@ struct NoiseAnalysisView: View {
     }
 
     private var liveWaveform: some View {
-        let liveSegs = segCache[appState.noiseCaptureRecorder.captureId ?? UUID()] ?? []
         return VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Circle().fill(AppColors.error).frame(width: 6, height: 6)
@@ -110,18 +109,21 @@ struct NoiseAnalysisView: View {
                     let s: Float = maxA > 0 ? 1.0 / maxA : 1
                     let visibleCount = min(liveAmps.count, Int(w))
                     let startIdx = max(0, liveAmps.count - visibleCount)
-                    let totalSamples = Double(liveAmps.count)
                     let captureStart = appState.noiseCaptureRecorder.startTime ?? Date()
                     let elapsed = Date().timeIntervalSince(captureStart)
+                    let captureId = appState.noiseCaptureRecorder.captureId ?? UUID()
+                    let liveSegs = segCache[captureId] ?? []
 
                     for seg in liveSegs {
                         let t0 = seg.timestamp.timeIntervalSince(captureStart)
                         let t1 = seg.endTime.timeIntervalSince(captureStart)
-                        guard elapsed > 0 else { continue }
-                        let visibleStart = Double(startIdx) / totalSamples * elapsed
+                        guard elapsed > 0, t1 > 0 else { continue }
+                        let visibleStart = Double(startIdx) / Double(max(liveAmps.count, 1)) * elapsed
                         let visibleEnd = elapsed
-                        let sx = max(0, (t0 - visibleStart) / (visibleEnd - visibleStart) * w)
-                        let ex = min(w, (t1 - visibleStart) / (visibleEnd - visibleStart) * w)
+                        let visibleSpan = visibleEnd - visibleStart
+                        guard visibleSpan > 0 else { continue }
+                        let sx = max(0, (t0 - visibleStart) / visibleSpan * w)
+                        let ex = min(w, (t1 - visibleStart) / visibleSpan * w)
                         if ex > sx {
                             context.fill(Path(CGRect(x: sx, y: 0, width: ex - sx, height: h)),
                                          with: .color(noiseColor(seg.noiseType).opacity(0.15)))
@@ -132,14 +134,24 @@ struct NoiseAnalysisView: View {
                         let amp = liveAmps[startIdx + i]
                         let x = Double(i)
                         let barH = Double(amp * s) * h * 0.9
+                        let sampleTime = elapsed > 0 ? Double(startIdx + i) / Double(max(liveAmps.count, 1)) * elapsed : 0
+                        let barSeg = liveSegs.first { seg in
+                            seg.layer == 0 &&
+                            sampleTime >= seg.timestamp.timeIntervalSince(captureStart) &&
+                            sampleTime < seg.endTime.timeIntervalSince(captureStart)
+                        }
+                        let barColor = barSeg.map { noiseColor($0.noiseType).opacity(0.75) }
+                            ?? AppColors.primary.opacity(0.4)
                         var p = Path()
                         p.addRect(CGRect(x: x, y: midY - barH / 2, width: 1, height: max(barH, 0.5)))
-                        context.fill(p, with: .color(noiseColor(liveNoiseType).opacity(0.7)))
+                        context.fill(p, with: .color(barColor))
                     }
                 }
                 .frame(height: 80)
             }
 
+            let captureId = appState.noiseCaptureRecorder.captureId ?? UUID()
+            let liveSegs = segCache[captureId] ?? []
             if !liveSegs.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 4) {
@@ -313,18 +325,19 @@ struct NoiseAnalysisView: View {
         let totalDur = appState.audioPlayer.duration > 0
             ? appState.audioPlayer.duration
             : max(1, Double(amps.count) * 0.3)
+        let baseW = max(700.0, Double(amps.count))
+        let totalW = baseW * Double(zoomScale)
 
-        return VStack(spacing: 1) {
-            ForEach(0...maxLayer, id: \.self) { layerIdx in
-                let layerSegs = segs.filter { $0.layer == layerIdx }
-                GeometryReader { geo in
-                    let w = geo.size.width
+        return ScrollView(.horizontal, showsIndicators: false) {
+            VStack(spacing: 1) {
+                ForEach(0...maxLayer, id: \.self) { layerIdx in
+                    let layerSegs = segs.filter { $0.layer == layerIdx }
                     ZStack(alignment: .leading) {
                         ForEach(layerSegs) { seg in
                             let t0 = seg.timestamp.timeIntervalSince(capture.date)
                             let t1 = seg.endTime.timeIntervalSince(capture.date)
-                            let x = max(0, t0 / totalDur * w)
-                            let segW = max(28, min(w - x, (t1 - t0) / totalDur * w))
+                            let x = max(0, t0 / totalDur * totalW)
+                            let segW = max(28, min(totalW - x, (t1 - t0) / totalDur * totalW))
                             let typeLabel = NoiseTypeLabel(rawValue: seg.noiseType) ?? .unknown
 
                             HStack(spacing: 2) {
@@ -342,8 +355,8 @@ struct NoiseAnalysisView: View {
                             .onTapGesture { editingSegment = seg }
                         }
                     }
+                    .frame(width: totalW, height: 16)
                 }
-                .frame(height: 16)
             }
         }
         .padding(.horizontal, AppSpacing.cardPadding)
@@ -594,7 +607,13 @@ struct NoiseAnalysisView: View {
             await MainActor.run {
                 isCapturing = false
                 captures = appState.noiseCaptureRecorder.allCaptures()
+                for cap in captures {
+                    if ampCache[cap.id] == nil {
+                        ampCache[cap.id] = appState.noiseCaptureRecorder.loadAmplitudes(from: cap.directoryURL)
+                    }
+                }
             }
+            await loadAllSegments()
         }
     }
 

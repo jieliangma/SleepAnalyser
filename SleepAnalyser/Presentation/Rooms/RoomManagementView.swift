@@ -95,7 +95,7 @@ struct RoomManagementView: View {
                         Text(String(format: "%.0f dB", room.baselineNoiseLevel))
                             .font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
                         if let date = room.lastCalibratedAt {
-                            Text(date, style: .relative).font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
+                            Text(date, style: .date).font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
                         }
                     } else {
                         Text(L10n.calibrationNone).font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
