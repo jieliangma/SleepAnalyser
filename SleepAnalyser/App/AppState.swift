@@ -23,6 +23,7 @@ final class AppState {
     let roomRepo: RoomRepository
     let noiseCaptureRecorder: NoiseCaptureRecorder
     let mlRetrainer: MLAutoRetrainer
+    let noiseTypeManager: NoiseTypeManager
 
     var activeSession: SleepSession?
     var activeProfile: UserProfile?
@@ -61,6 +62,7 @@ final class AppState {
         self.roomRepo = RoomRepository(persistence: persistence)
         self.noiseCaptureRecorder = NoiseCaptureRecorder()
         self.mlRetrainer = MLAutoRetrainer()
+        self.noiseTypeManager = NoiseTypeManager()
 
         Task { await loadActiveProfile() }
         checkMicPermission()

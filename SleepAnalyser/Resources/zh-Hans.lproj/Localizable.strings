@@ -181,3 +181,5 @@
 "noise.stopCapture" = "停止采集";
 "ml.export" = "导出训练数据";
 "noise.confirmAll" = "全部确认并训练";
+"noise.addType" = "添加噪声类型";
+"nav.noiseTypes" = "噪声类型";

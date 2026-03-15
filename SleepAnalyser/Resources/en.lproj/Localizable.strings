@@ -181,3 +181,5 @@
 "noise.stopCapture" = "Stop Capture";
 "ml.export" = "Export Training Data";
 "noise.confirmAll" = "Confirm All & Train";
+"noise.addType" = "Add Noise Type";
+"nav.noiseTypes" = "Noise Types";

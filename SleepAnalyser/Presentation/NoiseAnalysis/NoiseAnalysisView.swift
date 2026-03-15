@@ -13,11 +13,17 @@ struct NoiseAnalysisView: View {
     @State private var ampCache: [UUID: [Float]] = [:]
     @State private var segCache: [UUID: [NoiseSegment]] = [:]
     @State private var zoomScale: CGFloat = 1.0
+    @State private var manualSelectStart: CGFloat?
+    @State private var manualSelectEnd: CGFloat?
+    @State private var manualSelectCaptureId: UUID?
+    @State private var showManualTypePicker = false
+    @State private var manualTypeName: String = "traffic"
 
     var body: some View {
         ScrollView {
             VStack(spacing: AppSpacing.lg) {
                 header
+                if isCapturing { liveWaveform }
                 ForEach(captures) { cap in
                     captureCard(cap)
                 }
@@ -37,6 +43,9 @@ struct NoiseAnalysisView: View {
                 updateSegmentInCache(updated)
                 Task { await saveAndRetrain(updated) }
             })
+        }
+        .sheet(isPresented: $showManualTypePicker) {
+            manualTypePickerSheet
         }
     }
 
@@ -78,6 +87,46 @@ struct NoiseAnalysisView: View {
         .padding(.top, 60)
     }
 
+    private var liveWaveform: some View {
+        let amps = appState.noiseCaptureRecorder.amplitudes
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Circle().fill(AppColors.error).frame(width: 6, height: 6)
+                Text(L10n.recording).font(AppTypography.caption).foregroundStyle(AppColors.error)
+                Spacer()
+                Text((NoiseTypeLabel(rawValue: liveNoiseType) ?? .unknown).displayName)
+                    .font(AppTypography.caption).foregroundStyle(AppColors.textSecondary)
+                Text(String(format: "%.0f dB", liveDB))
+                    .font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
+            }
+            .padding(.horizontal, AppSpacing.cardPadding)
+
+            TimelineView(.animation(minimumInterval: 0.15)) { _ in
+                Canvas { context, size in
+                    let w = size.width, h = size.height, midY = h / 2
+                    let liveAmps = appState.noiseCaptureRecorder.amplitudes
+                    guard !liveAmps.isEmpty else { return }
+                    let maxA = liveAmps.max() ?? 1
+                    let s: Float = maxA > 0 ? 1.0 / maxA : 1
+                    let visibleCount = min(liveAmps.count, Int(w))
+                    let startIdx = max(0, liveAmps.count - visibleCount)
+                    for i in 0..<visibleCount {
+                        let amp = liveAmps[startIdx + i]
+                        let x = Double(i)
+                        let barH = Double(amp * s) * h * 0.9
+                        var p = Path()
+                        p.addRect(CGRect(x: x, y: midY - barH / 2, width: 1, height: max(barH, 0.5)))
+                        context.fill(p, with: .color(noiseColor(liveNoiseType).opacity(0.7)))
+                    }
+                }
+                .frame(height: 70)
+            }
+        }
+        .padding(.vertical, AppSpacing.sm)
+        .background(AppColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: AppSpacing.cardCornerRadius))
+    }
+
     // MARK: - Per-Capture Card
 
     private func captureCard(_ cap: NoiseCaptureRecorder.CaptureInfo) -> some View {
@@ -91,6 +140,7 @@ struct NoiseAnalysisView: View {
                 Spacer()
                 Text(formatSize(cap.size)).font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
                 Button {
+                    if appState.audioPlayer.playingEventId == cap.id { appState.audioPlayer.stop() }
                     appState.noiseCaptureRecorder.deleteCapture(cap)
                     captures = appState.noiseCaptureRecorder.allCaptures()
                     ampCache.removeValue(forKey: cap.id)
@@ -176,12 +226,39 @@ struct NoiseAnalysisView: View {
                         cursor.addLine(to: CGPoint(x: px, y: h))
                         context.stroke(cursor, with: .color(.white), lineWidth: 1)
                     }
+
+                    if manualSelectCaptureId == capture.id,
+                       let s = manualSelectStart, let e = manualSelectEnd {
+                        let x1 = min(s, e), x2 = max(s, e)
+                        context.fill(
+                            Path(CGRect(x: Double(x1), y: 0, width: Double(x2 - x1), height: h)),
+                            with: .color(Color.white.opacity(0.2))
+                        )
+                        context.stroke(
+                            Path(CGRect(x: Double(x1), y: 0, width: Double(x2 - x1), height: h)),
+                            with: .color(.white.opacity(0.6)), lineWidth: 1
+                        )
+                    }
                 }
                 .frame(width: totalW, height: 100)
                 .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 5)
+                        .onChanged { val in
+                            manualSelectCaptureId = capture.id
+                            manualSelectStart = val.startLocation.x
+                            manualSelectEnd = val.location.x
+                        }
+                        .onEnded { _ in
+                            showManualTypePicker = true
+                        }
+                )
                 .onTapGesture { loc in
-                    guard appState.audioPlayer.duration > 0, appState.audioPlayer.playingEventId == capture.id else { return }
-                    appState.audioPlayer.seek(to: loc.x / totalW * appState.audioPlayer.duration)
+                    if manualSelectStart != nil {
+                        manualSelectStart = nil; manualSelectEnd = nil; manualSelectCaptureId = nil
+                    } else if appState.audioPlayer.duration > 0, appState.audioPlayer.playingEventId == capture.id {
+                        appState.audioPlayer.seek(to: loc.x / totalW * appState.audioPlayer.duration)
+                    }
                 }
                 .gesture(MagnificationGesture().onChanged { val in
                     zoomScale = max(1.0, min(10.0, val))
@@ -319,17 +396,74 @@ struct NoiseAnalysisView: View {
         .padding(.horizontal, AppSpacing.cardPadding).padding(.vertical, 6)
     }
 
+    // MARK: - Manual Annotation
+
+    private var manualTypePickerSheet: some View {
+        VStack(spacing: AppSpacing.lg) {
+            Text(L10n.addNoiseType).font(AppTypography.headline).foregroundStyle(AppColors.textPrimary)
+            Picker(L10n.eventTypeLabel, selection: $manualTypeName) {
+                ForEach(appState.noiseTypeManager.types) { config in
+                    Label(config.name, systemImage: config.sfSymbol).tag(config.name)
+                }
+            }
+            .pickerStyle(.menu).labelsHidden()
+            HStack(spacing: AppSpacing.md) {
+                Button(L10n.cancel) {
+                    showManualTypePicker = false
+                    manualSelectStart = nil; manualSelectEnd = nil; manualSelectCaptureId = nil
+                }
+                .buttonStyle(.bordered)
+                Button(L10n.confirmEvent) {
+                    addManualSegment()
+                    showManualTypePicker = false
+                }
+                .buttonStyle(.borderedProminent).tint(AppColors.primary)
+            }
+        }
+        .padding(AppSpacing.xl).frame(width: 350, height: 180)
+    }
+
+    private func addManualSegment() {
+        guard let captureId = manualSelectCaptureId,
+              let s = manualSelectStart, let e = manualSelectEnd,
+              let cap = captures.first(where: { $0.id == captureId }) else { return }
+        let amps = ampCache[captureId] ?? []
+        let totalDur = appState.audioPlayer.duration > 0
+            ? appState.audioPlayer.duration
+            : max(1, Double(amps.count) * 0.3)
+        let baseW = max(700, CGFloat(amps.count)) * zoomScale
+        let t0 = Double(min(s, e)) / Double(baseW) * totalDur
+        let t1 = Double(max(s, e)) / Double(baseW) * totalDur
+
+        let seg = NoiseSegment(
+            sessionId: captureId,
+            timestamp: cap.date.addingTimeInterval(t0),
+            endTime: cap.date.addingTimeInterval(t1),
+            noiseType: manualTypeName, confidence: 1.0, energyDB: 0, layer: 0
+        )
+
+        let context = appState.persistence.newBackgroundContext()
+        context.insert(SDNoiseSegment(
+            id: seg.id, sessionId: seg.sessionId, timestamp: seg.timestamp,
+            endTime: seg.endTime, noiseType: seg.noiseType, confidence: seg.confidence,
+            energyDB: seg.energyDB, layer: seg.layer
+        ))
+        try? context.save()
+
+        segments.append(seg)
+        segCache[captureId, default: []].append(seg)
+
+        if let clipURL = appState.noiseCaptureRecorder.audioURL(for: cap.directoryURL) {
+            appState.noiseTypeManager.addSoundClip(to: manualTypeName, url: clipURL)
+        }
+
+        manualSelectStart = nil; manualSelectEnd = nil; manualSelectCaptureId = nil
+    }
+
     // MARK: - Helpers
 
     private func noiseColor(_ type: String) -> Color {
-        switch type {
-        case "traffic", "motorcycle": return AppColors.error
-        case "wind", "rain": return Color(hex: "38BDF8")
-        case "hvac": return AppColors.warning
-        case "speech": return Color(hex: "A855F7")
-        case "quiet": return AppColors.success
-        default: return AppColors.textTertiary
-        }
+        Color(hex: appState.noiseTypeManager.colorHex(for: type))
     }
 
     private func formatSize(_ bytes: Int64) -> String {

@@ -16,6 +16,7 @@ enum L10n {
     static var recordings: String { s("nav.recordings") }
     static var noiseAnalysis: String { s("nav.noiseAnalysis") }
     static var rooms: String { s("nav.rooms") }
+    static var noiseTypes: String { s("nav.noiseTypes") }
     static var trends: String { s("nav.trends") }
     static var profiles: String { s("nav.profiles") }
     static var settings: String { s("nav.settings") }
@@ -223,4 +224,5 @@ enum L10n {
     static var stopCapture: String { s("noise.stopCapture") }
     static var exportMLData: String { s("ml.export") }
     static var confirmAllNoise: String { s("noise.confirmAll") }
+    static var addNoiseType: String { s("noise.addType") }
 }

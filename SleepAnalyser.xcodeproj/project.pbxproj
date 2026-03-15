@@ -16,6 +16,7 @@
 		8606E855FF730039076CDDFC = {isa = PBXBuildFile; fileRef = D7A2ABB9B229A5301DE4926B; };
 		A49875EF487A92A2CEF47E48 = {isa = PBXBuildFile; fileRef = B4BCD56A69CCFCB094FD21B0; };
 		FEEB1D566F42311B655A575D = {isa = PBXBuildFile; fileRef = A677535E2AE35784097B6622; };
+		5DB22F0CC8005852EF24CB17 = {isa = PBXBuildFile; fileRef = 0123BE59A22F69D2E6AE7FF9; };
 		51BB8FAAF3052DD9E91EBC93 = {isa = PBXBuildFile; fileRef = 3533E250DB53CC8E4F07D9FD; };
 		EC23924697C8F7E9F8F94163 = {isa = PBXBuildFile; fileRef = 9A1C65099C15F36DB6E76B0D; };
 		C9C6FD66C792EB34A3BFCFC4 = {isa = PBXBuildFile; fileRef = F685F1D11C5F8B7BA83AC035; };
@@ -66,6 +67,7 @@
 		86E1D99718A3F02588362384 = {isa = PBXBuildFile; fileRef = 496A8531B8655EED753B4CE3; };
 		36C37EFFAB373E9FC2C4E1E3 = {isa = PBXBuildFile; fileRef = A0E7BB0DD1B1A03006A73CEC; };
 		1C635A8807C7D4F2BE538734 = {isa = PBXBuildFile; fileRef = 7182642BFA2A6E7A3EF445B1; };
+		6FE63C7581A1B37213E7C257 = {isa = PBXBuildFile; fileRef = 8481D95E048407442912EB89; };
 		70C89921024B5C3B94C13525 = {isa = PBXBuildFile; fileRef = 0298EA4ED80A3EB77F10D92A; };
 		EB711682B6BE63206494B8A6 = {isa = PBXBuildFile; fileRef = F846D49D14D4668CB7CBDBE1; };
 		3600A5013AD865D0E503639C = {isa = PBXBuildFile; fileRef = D41B0D2BD853C7719AD25629; };
@@ -102,6 +104,7 @@
 		C4383DB1B69AC073C7544967 = {isa = PBXBuildFile; fileRef = 3C420E3FEB304391BF44BB7B; };
 		708D27ED098C3DEDAB5612B6 = {isa = PBXBuildFile; fileRef = EC2B4CCCD2BC27884A735175; };
 		ACCF755F1B37FBFC1A909D67 = {isa = PBXBuildFile; fileRef = C30C5E8E87277A7BEE4FBD9F; };
+		AA4D93D492E83DC3E4D3CDBF = {isa = PBXBuildFile; fileRef = 252519FAC8B37FB400543E90; };
 		B588202CED89B356604A7F5E = {isa = PBXBuildFile; fileRef = 5F9001A8C24AA413302005D5; };
 		62715958867D3D4B1D21F506 = {isa = PBXBuildFile; fileRef = 26F51C1AADE6FAB86EE58C2D; };
 		4665ADEA6F325262972DB701 = {isa = PBXBuildFile; fileRef = 7290B19BE8B5443A8042DEB8; };
@@ -171,6 +174,7 @@
 		D7A2ABB9B229A5301DE4926B = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState.swift"; sourceTree = "<group>"; };
 		B4BCD56A69CCFCB094FD21B0 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepAnalyserApp.swift"; sourceTree = "<group>"; };
 		A677535E2AE35784097B6622 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoiseSeparatorBridge.swift"; sourceTree = "<group>"; };
+		0123BE59A22F69D2E6AE7FF9 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoiseTypeManager.swift"; sourceTree = "<group>"; };
 		A56C504FE6B614194C578D3D = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "noise_separator_bridge.h"; sourceTree = "<group>"; };
 		3533E250DB53CC8E4F07D9FD = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "noise_separator.c"; sourceTree = "<group>"; };
 		4C73DCE8B313EC5F89C4A52E = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "noise_separator.h"; sourceTree = "<group>"; };
@@ -223,6 +227,7 @@
 		496A8531B8655EED753B4CE3 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FeatureVector.swift"; sourceTree = "<group>"; };
 		A0E7BB0DD1B1A03006A73CEC = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningReport.swift"; sourceTree = "<group>"; };
 		7182642BFA2A6E7A3EF445B1 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoiseSegment.swift"; sourceTree = "<group>"; };
+		8481D95E048407442912EB89 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoiseTypeConfig.swift"; sourceTree = "<group>"; };
 		0298EA4ED80A3EB77F10D92A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProcessedFrame.swift"; sourceTree = "<group>"; };
 		F846D49D14D4668CB7CBDBE1 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RoomProfile.swift"; sourceTree = "<group>"; };
 		D41B0D2BD853C7719AD25629 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepEpoch.swift"; sourceTree = "<group>"; };
@@ -259,6 +264,7 @@
 		3C420E3FEB304391BF44BB7B = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DashboardView.swift"; sourceTree = "<group>"; };
 		EC2B4CCCD2BC27884A735175 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MenuBarView.swift"; sourceTree = "<group>"; };
 		C30C5E8E87277A7BEE4FBD9F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoiseAnalysisView.swift"; sourceTree = "<group>"; };
+		252519FAC8B37FB400543E90 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoiseTypeManagementView.swift"; sourceTree = "<group>"; };
 		5F9001A8C24AA413302005D5 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProfileListView.swift"; sourceTree = "<group>"; };
 		26F51C1AADE6FAB86EE58C2D = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioRecordingsView.swift"; sourceTree = "<group>"; };
 		7290B19BE8B5443A8042DEB8 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EventEditorView.swift"; sourceTree = "<group>"; };
@@ -377,6 +383,7 @@
 			children = (
 				BEDD7080C1B78EBE9ECBCFB9,
 				A677535E2AE35784097B6622,
+				0123BE59A22F69D2E6AE7FF9,
 				3533E250DB53CC8E4F07D9FD,
 				4C73DCE8B313EC5F89C4A52E,
 			);
@@ -525,6 +532,7 @@
 				496A8531B8655EED753B4CE3,
 				A0E7BB0DD1B1A03006A73CEC,
 				7182642BFA2A6E7A3EF445B1,
+				8481D95E048407442912EB89,
 				0298EA4ED80A3EB77F10D92A,
 				F846D49D14D4668CB7CBDBE1,
 				D41B0D2BD853C7719AD25629,
@@ -629,7 +637,7 @@
 		};
 		A7089C456C27E371AA7ADC53 = {
 			isa = PBXGroup;
-			children = (C30C5E8E87277A7BEE4FBD9F);
+			children = (C30C5E8E87277A7BEE4FBD9F, 252519FAC8B37FB400543E90);
 			path = "NoiseAnalysis";
 			sourceTree = "<group>";
 		};
@@ -883,6 +891,7 @@
 				8606E855FF730039076CDDFC,
 				A49875EF487A92A2CEF47E48,
 				FEEB1D566F42311B655A575D,
+				5DB22F0CC8005852EF24CB17,
 				51BB8FAAF3052DD9E91EBC93,
 				EC23924697C8F7E9F8F94163,
 				C9C6FD66C792EB34A3BFCFC4,
@@ -933,6 +942,7 @@
 				86E1D99718A3F02588362384,
 				36C37EFFAB373E9FC2C4E1E3,
 				1C635A8807C7D4F2BE538734,
+				6FE63C7581A1B37213E7C257,
 				70C89921024B5C3B94C13525,
 				EB711682B6BE63206494B8A6,
 				3600A5013AD865D0E503639C,
@@ -969,6 +979,7 @@
 				C4383DB1B69AC073C7544967,
 				708D27ED098C3DEDAB5612B6,
 				ACCF755F1B37FBFC1A909D67,
+				AA4D93D492E83DC3E4D3CDBF,
 				B588202CED89B356604A7F5E,
 				62715958867D3D4B1D21F506,
 				4665ADEA6F325262972DB701,

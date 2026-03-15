@@ -181,3 +181,5 @@
 "noise.stopCapture" = "停止採集";
 "ml.export" = "匯出訓練資料";
 "noise.confirmAll" = "全部確認並訓練";
+"noise.addType" = "新增噪聲類型";
+"nav.noiseTypes" = "噪聲類型";
