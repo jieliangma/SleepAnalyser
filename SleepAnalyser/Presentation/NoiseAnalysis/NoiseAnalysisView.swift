@@ -17,6 +17,8 @@ struct NoiseAnalysisView: View {
     @State private var toolMode: [UUID: WaveformTool] = [:]
     @State private var commandKeyDown = false
     @State private var commandMonitor: Any?
+    @State private var hoveredCaptureId: UUID?
+    @State private var scrollOffset: [UUID: CGFloat] = [:]
 
     enum WaveformTool { case select, pan }
     @State private var manualSelectStart: CGFloat?
@@ -46,11 +48,15 @@ struct NoiseAnalysisView: View {
             commandMonitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged]) { event in
                 let cmd = event.modifierFlags.contains(.command)
                 if cmd != commandKeyDown {
-                    DispatchQueue.main.async { commandKeyDown = cmd }
-                    if !cmd {
-                        DispatchQueue.main.async {
+                    DispatchQueue.main.async {
+                        commandKeyDown = cmd
+                        if !cmd {
                             toolMode.removeAll()
-                            NSCursor.arrow.set()
+                            if hoveredCaptureId != nil {
+                                NSCursor.iBeam.set()
+                            } else {
+                                NSCursor.arrow.set()
+                            }
                         }
                     }
                 }
@@ -211,7 +217,7 @@ struct NoiseAnalysisView: View {
                         .font(.system(size: 11)).foregroundStyle(AppColors.primary)
                 }
                 .buttonStyle(.plain)
-                if commandKeyDown {
+                if commandKeyDown && hoveredCaptureId == cap.id {
                     Button {
                         toolMode[cap.id] = .select
                         NSCursor.iBeam.set()
@@ -327,17 +333,38 @@ struct NoiseAnalysisView: View {
                 }
                 .frame(width: totalW, height: 100)
                 .contentShape(Rectangle())
+                .onHover { inside in
+                    if inside {
+                        hoveredCaptureId = capture.id
+                        let mode = toolMode[capture.id]
+                        if mode == .pan {
+                            NSCursor.openHand.set()
+                        } else {
+                            NSCursor.iBeam.set()
+                        }
+                    } else {
+                        if hoveredCaptureId == capture.id { hoveredCaptureId = nil }
+                        NSCursor.arrow.set()
+                    }
+                }
                 .gesture(
-                    DragGesture(minimumDistance: 5)
+                    DragGesture(minimumDistance: 3)
                         .onChanged { val in
-                            if toolMode[capture.id] == .select || (!commandKeyDown && toolMode[capture.id] == nil) {
+                            if toolMode[capture.id] == .pan {
+                                NSCursor.closedHand.set()
+                                let delta = val.translation.width
+                                scrollOffset[capture.id] = delta
+                            } else {
                                 manualSelectCaptureId = capture.id
                                 manualSelectStart = val.startLocation.x
                                 manualSelectEnd = val.location.x
                             }
                         }
                         .onEnded { _ in
-                            if toolMode[capture.id] == .select || (!commandKeyDown && manualSelectStart != nil) {
+                            if toolMode[capture.id] == .pan {
+                                NSCursor.openHand.set()
+                                scrollOffset[capture.id] = 0
+                            } else if manualSelectStart != nil {
                                 showManualTypePicker = true
                             }
                         }
