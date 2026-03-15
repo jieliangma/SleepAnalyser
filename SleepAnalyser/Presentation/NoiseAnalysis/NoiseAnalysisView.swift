@@ -138,17 +138,24 @@ struct NoiseAnalysisView: View {
             let captureId = appState.noiseCaptureRecorder.captureId ?? UUID()
             let liveSegs = segCache[captureId] ?? []
             if !liveSegs.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 4) {
-                        ForEach(liveSegs.suffix(10)) { seg in
-                            HStack(spacing: 2) {
-                                RoundedRectangle(cornerRadius: 1).fill(noiseColor(seg.noiseType)).frame(width: 3, height: 12)
-                                Text((NoiseTypeLabel(rawValue: seg.noiseType) ?? .unknown).displayName)
-                                    .font(.system(size: 9)).foregroundStyle(AppColors.textSecondary)
+                let seen = NSMutableSet()
+                let uniqueTypes = liveSegs.compactMap { seg -> String? in
+                    guard !seen.contains(seg.noiseType) else { return nil }
+                    seen.add(seg.noiseType)
+                    return seg.noiseType
+                }
+                ScrollView(.horizontal, showsIndicators: true) {
+                    HStack(spacing: 6) {
+                        ForEach(uniqueTypes, id: \.self) { type in
+                            let typeLabel = NoiseTypeLabel(rawValue: type) ?? .unknown
+                            HStack(spacing: 3) {
+                                Circle().fill(noiseColor(type)).frame(width: 6, height: 6)
+                                Text(typeLabel.displayName)
+                                    .font(.system(size: 10)).foregroundStyle(AppColors.textSecondary).fixedSize()
                             }
-                            .padding(.horizontal, 4).padding(.vertical, 2)
-                            .background(noiseColor(seg.noiseType).opacity(0.08))
-                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                            .padding(.horizontal, 8).padding(.vertical, 3)
+                            .background(noiseColor(type).opacity(0.08))
+                            .clipShape(Capsule()).fixedSize()
                         }
                     }
                     .padding(.horizontal, AppSpacing.cardPadding)
@@ -174,6 +181,7 @@ struct NoiseAnalysisView: View {
                     .font(AppTypography.headline).foregroundStyle(AppColors.textPrimary)
                 Text(DurationFormatter.format(isThisPlaying ? appState.audioPlayer.currentTime : duration, style: .compact))
                     .font(.system(size: 11, design: .monospaced)).foregroundStyle(AppColors.textTertiary)
+                Text(formatSize(cap.size)).font(.system(size: 11)).foregroundStyle(AppColors.textTertiary)
                 Button {
                     guard let url = appState.noiseCaptureRecorder.audioURL(for: cap.directoryURL) else { return }
                     if isThisPlaying { appState.audioPlayer.stop() } else { appState.audioPlayer.play(url: url, eventId: cap.id) }
@@ -184,7 +192,6 @@ struct NoiseAnalysisView: View {
                 .buttonStyle(.plain)
                 Spacer()
                 if !segs.isEmpty { noiseSummaryBadges(segs) }
-                Text(formatSize(cap.size)).font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
                 Button { Task { await reanalyzeCapture(cap) } } label: {
                     Image(systemName: "arrow.trianglehead.2.clockwise").font(.system(size: 12)).foregroundStyle(AppColors.primary)
                 }
@@ -381,7 +388,6 @@ struct NoiseAnalysisView: View {
         return Group {
             if !unconfirmed.isEmpty {
                 HStack {
-                    Spacer()
                     Button {
                         Task { await confirmAll(capture: capture) }
                     } label: {
@@ -393,6 +399,7 @@ struct NoiseAnalysisView: View {
                             .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
+                    Spacer()
                 }
                 .padding(.horizontal, AppSpacing.cardPadding).padding(.vertical, 4)
             }
@@ -573,11 +580,14 @@ struct NoiseAnalysisView: View {
     }
 
     private func captureDuration(_ cap: NoiseCaptureRecorder.CaptureInfo) -> TimeInterval {
-        guard let url = appState.noiseCaptureRecorder.audioURL(for: cap.directoryURL),
-              let file = try? AVAudioFile(forReading: url) else {
-            return 0
+        if let url = appState.noiseCaptureRecorder.audioURL(for: cap.directoryURL),
+           let file = try? AVAudioFile(forReading: url),
+           file.processingFormat.sampleRate > 0 {
+            return Double(file.length) / file.processingFormat.sampleRate
         }
-        return Double(file.length) / file.processingFormat.sampleRate
+        let amps = ampCache[cap.id] ?? []
+        if !amps.isEmpty { return Double(amps.count) / 15.0 }
+        return 0
     }
 
     private func noiseColor(_ type: String) -> Color {
