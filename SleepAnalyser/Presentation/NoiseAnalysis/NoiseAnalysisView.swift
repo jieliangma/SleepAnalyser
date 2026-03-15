@@ -170,6 +170,10 @@ struct NoiseAnalysisView: View {
                 Image(systemName: "calendar").foregroundStyle(AppColors.textTertiary)
                 Text(cap.date, format: .dateTime.year().month().day().weekday().hour().minute())
                     .font(AppTypography.headline).foregroundStyle(AppColors.textPrimary)
+                if !amps.isEmpty {
+                    Text(DurationFormatter.format(Double(amps.count) / 15.0))
+                        .font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
+                }
                 Spacer()
                 if !segs.isEmpty {
                     noiseSummaryBadges(segs)
@@ -226,7 +230,20 @@ struct NoiseAnalysisView: View {
                     let ampScale: Float = maxAmp > 0 ? 1.0 / maxAmp : 1.0
                     let totalDur = appState.audioPlayer.duration > 0
                         ? appState.audioPlayer.duration
-                        : Double(amps.count) * 0.3
+                        : Double(amps.count) / 15.0
+
+                    let stripH = h * 0.15
+                    for seg in segs {
+                        let t0 = seg.timestamp.timeIntervalSince(capture.date)
+                        let t1 = seg.endTime.timeIntervalSince(capture.date)
+                        guard t1 > 0, t0 < totalDur else { continue }
+                        let x1 = max(0, t0 / totalDur * w)
+                        let x2 = min(w, t1 / totalDur * w)
+                        context.fill(
+                            Path(CGRect(x: x1, y: h - stripH, width: x2 - x1, height: stripH)),
+                            with: .color(noiseColor(seg.noiseType).opacity(0.35))
+                        )
+                    }
 
                     let pixelCount = Int(w)
                     for px in 0..<pixelCount {
