@@ -50,7 +50,6 @@ final class PersistenceController: @unchecked Sendable {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let storeBase = appSupport.appendingPathComponent("default.store")
         for suffix in ["", "-wal", "-shm"] {
-            let url = storeBase.appendingPathExtension(suffix.isEmpty ? "" : String(suffix.dropFirst()))
             let path = suffix.isEmpty ? storeBase.path : storeBase.path + suffix
             try? FileManager.default.removeItem(atPath: path)
         }

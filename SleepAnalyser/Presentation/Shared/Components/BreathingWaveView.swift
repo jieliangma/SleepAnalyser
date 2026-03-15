@@ -38,12 +38,6 @@ struct BreathingWaveView: View {
         .animation(.easeInOut(duration: 0.3), value: isActive)
     }
 
-    func onBreathDetected() -> BreathingWaveView {
-        var copy = self
-        copy.peakFlash = 1.0
-        return copy
-    }
-
     private func drawWave(context: GraphicsContext, w: Double, h: Double, midY: Double, amp: Double, opacity: Double, yScale: Double, lineWidth: Double) {
         let baseAmp = h * 0.28 * yScale
         let liveAmp = baseAmp * (0.15 + 0.85 * amp)

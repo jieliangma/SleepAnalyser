@@ -215,11 +215,13 @@ final class AudioFileWriter {
         guard let audioFile, !samples.isEmpty else { return }
         var mutableSamples = samples
         let frameCount = UInt32(samples.count)
-        var buffer = AudioBuffer(mNumberChannels: 1, mDataByteSize: frameCount * 4, mData: &mutableSamples)
-        var bufferList = AudioBufferList(mNumberBuffers: 1, mBuffers: buffer)
-        let status = ExtAudioFileWrite(audioFile, frameCount, &bufferList)
-        if status != noErr {
-            NSLog("AudioFileWriter: write failed with status %d", status)
+        mutableSamples.withUnsafeMutableBufferPointer { ptr in
+            var buffer = AudioBuffer(mNumberChannels: 1, mDataByteSize: frameCount * 4, mData: ptr.baseAddress)
+            var bufferList = AudioBufferList(mNumberBuffers: 1, mBuffers: buffer)
+            let status = ExtAudioFileWrite(audioFile, frameCount, &bufferList)
+            if status != noErr {
+                NSLog("AudioFileWriter: write failed with status %d", status)
+            }
         }
     }
 

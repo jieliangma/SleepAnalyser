@@ -174,8 +174,9 @@ final class AppState {
         session.epochs = epochHistory
         session.events = sessionEvents
         try await sessionRepo.updateSession(session)
+        let finishedSession = session
         await MainActor.run {
-            activeSession = session
+            activeSession = finishedSession
         }
     }
 

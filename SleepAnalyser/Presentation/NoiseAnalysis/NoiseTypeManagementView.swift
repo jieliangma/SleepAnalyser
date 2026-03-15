@@ -69,13 +69,12 @@ struct NoiseTypeManagementView: View {
     }
 
     private func clipRow(config: NoiseTypeConfig, idx: Int, url: URL) -> some View {
-        let isPlaying = appState.audioPlayer.isPlaying && appState.audioPlayer.playingEventId == url.hashValue.magnitude as? UUID
+        let clipId = UUID(uuidString: "00000000-0000-0000-0000-\(String(format: "%012x", abs(url.hashValue) & 0xFFFFFFFFFFFF))") ?? UUID()
         let amps = clipAmps[url] ?? []
         return VStack(spacing: 2) {
             HStack(spacing: AppSpacing.sm) {
                 Button {
-                    let fakeId = UUID(uuidString: "00000000-0000-0000-0000-\(String(format: "%012x", url.hashValue & 0xFFFFFFFFFFFF))") ?? UUID()
-                    appState.audioPlayer.toggle(url: url, eventId: fakeId)
+                    appState.audioPlayer.toggle(url: url, eventId: clipId)
                 } label: {
                     Image(systemName: appState.audioPlayer.isPlaying ? "pause.fill" : "play.fill")
                         .font(.system(size: 11)).foregroundStyle(Color(hex: config.colorHex))
@@ -185,7 +184,7 @@ struct NoiseTypeManagementView: View {
     }
 }
 
-extension NoiseTypeConfig: @retroactive Hashable {
+extension NoiseTypeConfig: Hashable {
     static func == (lhs: NoiseTypeConfig, rhs: NoiseTypeConfig) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
