@@ -236,21 +236,6 @@ struct NoiseAnalysisView: View {
                     let totalDur = appState.audioPlayer.duration > 0
                         ? appState.audioPlayer.duration
                         : Double(amps.count) * 0.3
-                    let maxLayer = (segs.map(\.layer).max() ?? 0) + 1
-                    let bandH = h / Double(max(maxLayer, 1))
-
-                    for seg in segs {
-                        let t0 = seg.timestamp.timeIntervalSince(capture.date)
-                        let t1 = seg.endTime.timeIntervalSince(capture.date)
-                        guard t1 > 0, t0 < totalDur else { continue }
-                        let x1 = max(0, t0 / totalDur * w)
-                        let x2 = min(w, t1 / totalDur * w)
-                        let y = Double(seg.layer) * bandH
-                        context.fill(
-                            Path(CGRect(x: x1, y: y, width: x2 - x1, height: bandH)),
-                            with: .color(noiseColor(seg.noiseType).opacity(0.18))
-                        )
-                    }
 
                     let pixelCount = Int(w)
                     for px in 0..<pixelCount {
@@ -327,45 +312,62 @@ struct NoiseAnalysisView: View {
     // MARK: - Label Row
 
     private func labelRows(segs: [NoiseSegment], capture: NoiseCaptureRecorder.CaptureInfo, amps: [Float]) -> some View {
-        let maxLayer = segs.map(\.layer).max() ?? 0
         let totalDur = appState.audioPlayer.duration > 0
             ? appState.audioPlayer.duration
             : max(1, Double(amps.count) * 0.3)
         let baseW = max(700.0, Double(amps.count))
         let totalW = baseW * Double(zoomScale)
 
-        return ScrollView(.horizontal, showsIndicators: false) {
-            VStack(spacing: 1) {
-                ForEach(0...maxLayer, id: \.self) { layerIdx in
-                    let layerSegs = segs.filter { $0.layer == layerIdx }
-                    ZStack(alignment: .leading) {
-                        ForEach(layerSegs) { seg in
-                            let t0 = seg.timestamp.timeIntervalSince(capture.date)
-                            let t1 = seg.endTime.timeIntervalSince(capture.date)
-                            let x = max(0, t0 / totalDur * totalW)
-                            let segW = max(28, min(totalW - x, (t1 - t0) / totalDur * totalW))
-                            let typeLabel = NoiseTypeLabel(rawValue: seg.noiseType) ?? .unknown
+        let merged = mergeAdjacentLabels(segs: segs, totalDur: totalDur, totalW: totalW, captureDate: capture.date)
 
-                            HStack(spacing: 2) {
-                                RoundedRectangle(cornerRadius: 1).fill(noiseColor(seg.noiseType)).frame(width: 3)
-                                Text(typeLabel.displayName)
-                                    .font(.system(size: 9)).foregroundStyle(AppColors.textSecondary).lineLimit(1)
-                                if seg.isConfirmed {
-                                    Image(systemName: "checkmark").font(.system(size: 7)).foregroundStyle(AppColors.success)
-                                }
-                            }
-                            .frame(width: segW, height: 14, alignment: .leading)
-                            .background(noiseColor(seg.noiseType).opacity(0.08))
-                            .clipShape(RoundedRectangle(cornerRadius: 2))
-                            .offset(x: x)
-                            .onTapGesture { editingSegment = seg }
-                        }
+        return ScrollView(.horizontal, showsIndicators: false) {
+            ZStack(alignment: .leading) {
+                ForEach(merged, id: \.id) { item in
+                    HStack(spacing: 2) {
+                        RoundedRectangle(cornerRadius: 1).fill(noiseColor(item.noiseType)).frame(width: 3)
+                        Text(item.label).font(.system(size: 9)).foregroundStyle(AppColors.textSecondary).lineLimit(1)
                     }
-                    .frame(width: totalW, height: 16)
+                    .frame(width: max(item.width, 20), height: 14, alignment: .leading)
+                    .background(noiseColor(item.noiseType).opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 2))
+                    .offset(x: item.x)
+                    .onTapGesture {
+                        if let seg = segs.first(where: { $0.id == item.segId }) { editingSegment = seg }
+                    }
                 }
             }
+            .frame(width: totalW, height: 16)
         }
         .padding(.horizontal, AppSpacing.cardPadding)
+    }
+
+    private struct MergedLabel: Identifiable {
+        let id: UUID
+        let segId: UUID
+        let noiseType: String
+        let label: String
+        let x: Double
+        let width: Double
+    }
+
+    private func mergeAdjacentLabels(segs: [NoiseSegment], totalDur: Double, totalW: Double, captureDate: Date) -> [MergedLabel] {
+        let sorted = segs.sorted { $0.timestamp < $1.timestamp }
+        var result: [MergedLabel] = []
+        var lastEndX: Double = -100
+
+        for seg in sorted {
+            let t0 = seg.timestamp.timeIntervalSince(captureDate)
+            let t1 = seg.endTime.timeIntervalSince(captureDate)
+            let x = max(0, t0 / totalDur * totalW)
+            let segW = (t1 - t0) / totalDur * totalW
+            let typeLabel = NoiseTypeLabel(rawValue: seg.noiseType) ?? .unknown
+
+            let labelX = x < lastEndX + 2 ? lastEndX + 2 : x
+            let w = max(20, segW)
+            result.append(MergedLabel(id: seg.id, segId: seg.id, noiseType: seg.noiseType, label: typeLabel.displayName, x: labelX, width: w))
+            lastEndX = labelX + w
+        }
+        return result
     }
 
     private func confirmBar(capture: NoiseCaptureRecorder.CaptureInfo, segs: [NoiseSegment]) -> some View {
@@ -573,37 +575,34 @@ struct NoiseAnalysisView: View {
                     guard isCapturing else { break }
                     appState.noiseCaptureRecorder.feedAudio(frame.samples)
                     separator.updateNoiseFloor(samples: frame.samples)
-                    let layers = separator.decomposeMultiLayer(samples: frame.samples)
+                    let (noiseType, conf) = separator.classifyNoise(samples: frame.samples)
                     let bands = separator.computeBandEnergy(samples: frame.samples)
                     let db = bands.totalRMS > 0 ? 20.0 * log10(Double(bands.totalRMS)) : -100
                     await MainActor.run {
-                        liveNoiseType = layers.first?.type.rawValue ?? "quiet"
+                        liveNoiseType = noiseType.rawValue
                         liveDB = db
                     }
 
                     let now = Date()
-                    if now.timeIntervalSince(segStart) > 2 && !layers.isEmpty {
+                    if noiseType != .quiet && conf > 0.3 && now.timeIntervalSince(segStart) > 0.5 {
+                        let seg = NoiseSegment(
+                            sessionId: captureId, timestamp: segStart, endTime: now,
+                            noiseType: noiseType.rawValue, confidence: Double(conf),
+                            energyDB: db, layer: 0
+                        )
                         let context = appState.persistence.newBackgroundContext()
-                        for (layerIdx, layer) in layers.enumerated() {
-                            let seg = NoiseSegment(
-                                sessionId: captureId, timestamp: segStart, endTime: now,
-                                noiseType: layer.type.rawValue, confidence: Double(layer.confidence),
-                                energyDB: Double(layer.energy > 0 ? 20 * log10(layer.energy) : -100),
-                                layer: layerIdx
-                            )
-                            context.insert(SDNoiseSegment(
-                                id: seg.id, sessionId: seg.sessionId, timestamp: seg.timestamp,
-                                endTime: seg.endTime, noiseType: seg.noiseType, confidence: seg.confidence,
-                                energyDB: seg.energyDB, layer: layerIdx
-                            ))
-                            await MainActor.run {
-                                segments.append(seg)
-                                segCache[captureId, default: []].append(seg)
-                            }
-                        }
+                        context.insert(SDNoiseSegment(
+                            id: seg.id, sessionId: seg.sessionId, timestamp: seg.timestamp,
+                            endTime: seg.endTime, noiseType: seg.noiseType, confidence: seg.confidence,
+                            energyDB: seg.energyDB, layer: 0
+                        ))
                         try? context.save()
+                        await MainActor.run {
+                            segments.append(seg)
+                            segCache[captureId, default: []].append(seg)
+                        }
                         segStart = now
-                    } else if layers.isEmpty {
+                    } else if noiseType == .quiet {
                         segStart = Date()
                     }
                 }
