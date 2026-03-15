@@ -303,33 +303,29 @@ struct NoiseAnalysisView: View {
     // MARK: - Label Row
 
     private func labelRows(segs: [NoiseSegment], capture: NoiseCaptureRecorder.CaptureInfo, amps: [Float]) -> some View {
-        let totalDur = appState.audioPlayer.duration > 0
-            ? appState.audioPlayer.duration
-            : max(1, Double(amps.count) * 0.3)
-        let baseW = max(700.0, Double(amps.count))
-        let totalW = baseW * Double(zoomScale)
-
-        let merged = mergeAdjacentLabels(segs: segs, totalDur: totalDur, totalW: totalW, captureDate: capture.date)
+        var seen = Set<String>()
+        let uniqueTypes = segs.compactMap { seg -> String? in
+            guard !seen.contains(seg.noiseType) else { return nil }
+            seen.insert(seg.noiseType)
+            return seg.noiseType
+        }
 
         return ScrollView(.horizontal, showsIndicators: false) {
-            ZStack(alignment: .leading) {
-                ForEach(merged, id: \.id) { item in
-                    HStack(spacing: 2) {
-                        RoundedRectangle(cornerRadius: 1).fill(noiseColor(item.noiseType)).frame(width: 3)
-                        Text(item.label).font(.system(size: 9)).foregroundStyle(AppColors.textSecondary).lineLimit(1)
+            HStack(spacing: 6) {
+                ForEach(uniqueTypes, id: \.self) { type in
+                    let typeLabel = NoiseTypeLabel(rawValue: type) ?? .unknown
+                    HStack(spacing: 3) {
+                        Circle().fill(noiseColor(type)).frame(width: 6, height: 6)
+                        Text(typeLabel.displayName)
+                            .font(.system(size: 10)).foregroundStyle(AppColors.textSecondary)
                     }
-                    .frame(width: max(item.width, 20), height: 14, alignment: .leading)
-                    .background(noiseColor(item.noiseType).opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 2))
-                    .offset(x: item.x)
-                    .onTapGesture {
-                        if let seg = segs.first(where: { $0.id == item.segId }) { editingSegment = seg }
-                    }
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .background(noiseColor(type).opacity(0.08))
+                    .clipShape(Capsule())
                 }
             }
-            .frame(width: totalW, height: 16)
+            .padding(.horizontal, AppSpacing.cardPadding)
         }
-        .padding(.horizontal, AppSpacing.cardPadding)
     }
 
     private struct MergedLabel: Identifiable {
