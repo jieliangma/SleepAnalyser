@@ -309,6 +309,9 @@ struct NoiseAnalysisView: View {
                 .gesture(MagnificationGesture().onChanged { val in
                     zoomScale = max(1.0, min(10.0, val))
                 })
+                .onScrollWheelZoom { delta in
+                    zoomScale = max(1.0, min(10.0, zoomScale + delta))
+                }
             }
         }
         .frame(height: 100)

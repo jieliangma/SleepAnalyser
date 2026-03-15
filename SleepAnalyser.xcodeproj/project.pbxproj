@@ -119,6 +119,7 @@
 		3DB4A7D6A08324EBF80DAD36 = {isa = PBXBuildFile; fileRef = 3BCCAF7929D4AC2E9EB0EE41; };
 		EE7210DC1805F6C0872BC939 = {isa = PBXBuildFile; fileRef = 0727989814C08F552766FCE5; };
 		D33F324E31E4D9D83BE4483E = {isa = PBXBuildFile; fileRef = 5D2FA4E79839E516E641E72A; };
+		0F9D3B518D7D6CFF9F10E658 = {isa = PBXBuildFile; fileRef = A3C2F55D1A4A9505098DE551; };
 		FF28583061608E5504440760 = {isa = PBXBuildFile; fileRef = 9469E08F652E3ECAF56CEC93; };
 		634CE4FE840C554E20F7D277 = {isa = PBXBuildFile; fileRef = AA7C0E181A1ACAA07473854F; };
 		AF3CF985745C608589D716AC = {isa = PBXBuildFile; fileRef = 72AA7CDE131FA18151B14AA7; };
@@ -279,6 +280,7 @@
 		3BCCAF7929D4AC2E9EB0EE41 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EventTimelineView.swift"; sourceTree = "<group>"; };
 		0727989814C08F552766FCE5 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HypnogramChartView.swift"; sourceTree = "<group>"; };
 		5D2FA4E79839E516E641E72A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MetricCardView.swift"; sourceTree = "<group>"; };
+		A3C2F55D1A4A9505098DE551 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ScrollWheelZoomModifier.swift"; sourceTree = "<group>"; };
 		9469E08F652E3ECAF56CEC93 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepScoreGaugeView.swift"; sourceTree = "<group>"; };
 		AA7C0E181A1ACAA07473854F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DurationFormatter.swift"; sourceTree = "<group>"; };
 		72AA7CDE131FA18151B14AA7 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepStageFormatter.swift"; sourceTree = "<group>"; };
@@ -691,6 +693,7 @@
 				3BCCAF7929D4AC2E9EB0EE41,
 				0727989814C08F552766FCE5,
 				5D2FA4E79839E516E641E72A,
+				A3C2F55D1A4A9505098DE551,
 				9469E08F652E3ECAF56CEC93,
 			);
 			path = "Components";
@@ -994,6 +997,7 @@
 				3DB4A7D6A08324EBF80DAD36,
 				EE7210DC1805F6C0872BC939,
 				D33F324E31E4D9D83BE4483E,
+				0F9D3B518D7D6CFF9F10E658,
 				FF28583061608E5504440760,
 				634CE4FE840C554E20F7D277,
 				AF3CF985745C608589D716AC,
