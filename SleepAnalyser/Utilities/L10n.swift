@@ -237,4 +237,13 @@ enum L10n {
     static func storageDaysValue(_ d: Int) -> String {
         String(format: s("settings.storageDaysFormat"), d)
     }
+
+    // MARK: - Audio Filter Test
+    static var audioFilterTest: String { s("settings.audioFilterTest") }
+    static var audioFilterTestDesc: String { s("settings.audioFilterTestDesc") }
+    static var audioFilterStart: String { s("settings.audioFilterStart") }
+    static var audioFilterStop: String { s("settings.audioFilterStop") }
+    static var audioFilterOriginal: String { s("settings.audioFilterOriginal") }
+    static var audioFilterProcessed: String { s("settings.audioFilterProcessed") }
+    static var audioFilterBypass: String { s("settings.audioFilterBypass") }
 }

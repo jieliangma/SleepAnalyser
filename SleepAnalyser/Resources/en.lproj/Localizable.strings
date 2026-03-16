@@ -192,3 +192,11 @@
 "settings.recordingCount" = "Recordings";
 "settings.storageNote" = "Oldest recordings are automatically deleted when limits are exceeded.";
 "settings.storageDaysFormat" = "%d days";
+
+"settings.audioFilterTest" = "Audio Filter Test";
+"settings.audioFilterTestDesc" = "Capture microphone audio, process through the noise separation pipeline, and play back the result. Useful for evaluating filter quality.";
+"settings.audioFilterStart" = "Start Test";
+"settings.audioFilterStop" = "Stop Test";
+"settings.audioFilterOriginal" = "Original";
+"settings.audioFilterProcessed" = "Processed";
+"settings.audioFilterBypass" = "Bypass Filters";

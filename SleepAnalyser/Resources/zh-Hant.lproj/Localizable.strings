@@ -192,3 +192,11 @@
 "settings.recordingCount" = "錄音數量";
 "settings.storageNote" = "超過限制時，最舊的錄音將被自動刪除。";
 "settings.storageDaysFormat" = "%d 天";
+
+"settings.audioFilterTest" = "音訊濾波測試";
+"settings.audioFilterTestDesc" = "採集麥克風聲音，通過噪聲分離流水線處理後即時播放，用於評估濾波效果。";
+"settings.audioFilterStart" = "開始測試";
+"settings.audioFilterStop" = "停止測試";
+"settings.audioFilterOriginal" = "原始訊號";
+"settings.audioFilterProcessed" = "處理後訊號";
+"settings.audioFilterBypass" = "旁通濾波器";

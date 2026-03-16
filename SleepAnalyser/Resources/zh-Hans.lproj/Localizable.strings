@@ -192,3 +192,11 @@
 "settings.recordingCount" = "录音数量";
 "settings.storageNote" = "超过限制时，最旧的录音将被自动删除。";
 "settings.storageDaysFormat" = "%d 天";
+
+"settings.audioFilterTest" = "音频滤波测试";
+"settings.audioFilterTestDesc" = "采集麦克风声音，通过噪声分离流水线处理后实时播放，用于评估滤波效果。";
+"settings.audioFilterStart" = "开始测试";
+"settings.audioFilterStop" = "停止测试";
+"settings.audioFilterOriginal" = "原始信号";
+"settings.audioFilterProcessed" = "处理后信号";
+"settings.audioFilterBypass" = "旁通滤波器";
