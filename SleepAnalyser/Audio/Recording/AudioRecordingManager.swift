@@ -110,6 +110,11 @@ final class AudioRecordingManager: @unchecked Sendable {
         }
     }
 
+    func deleteAllRecordings() {
+        try? FileManager.default.removeItem(at: storageDir)
+        try? FileManager.default.createDirectory(at: storageDir, withIntermediateDirectories: true)
+    }
+
     func cleanupIfNeeded() {
         let maxSize = StorageSettings.maxSizeBytes
         let maxDays = StorageSettings.maxRetentionDays

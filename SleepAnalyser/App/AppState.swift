@@ -233,4 +233,43 @@ final class AppState {
         s.events = sessionEvents
         return reportGenerator.generateMorningReport(session: s)
     }
+
+    func deleteAllData() async {
+        let context = persistence.newBackgroundContext()
+
+        let sessions = (try? context.fetch(FetchDescriptor<SDSleepSession>())) ?? []
+        sessions.forEach { context.delete($0) }
+        let epochs = (try? context.fetch(FetchDescriptor<SDSleepEpoch>())) ?? []
+        epochs.forEach { context.delete($0) }
+        let events = (try? context.fetch(FetchDescriptor<SDAudioEvent>())) ?? []
+        events.forEach { context.delete($0) }
+        let noiseSegs = (try? context.fetch(FetchDescriptor<SDNoiseSegment>())) ?? []
+        noiseSegs.forEach { context.delete($0) }
+        let rooms = (try? context.fetch(FetchDescriptor<SDRoomProfile>())) ?? []
+        rooms.forEach { context.delete($0) }
+        let profiles = (try? context.fetch(FetchDescriptor<SDUserProfile>())) ?? []
+        profiles.forEach { context.delete($0) }
+        let calibrations = (try? context.fetch(FetchDescriptor<SDCalibration>())) ?? []
+        calibrations.forEach { context.delete($0) }
+        try? context.save()
+
+        recordingManager.deleteAllRecordings()
+        noiseCaptureRecorder.deleteAllCaptures()
+        mlRetrainer.deleteAllFeedback()
+
+        await MainActor.run {
+            activeSession = nil
+            activeProfile = nil
+            activeRoom = nil
+            epochHistory = []
+            sessionEvents = []
+            currentStage = .unknown
+            currentBreathingRate = 0
+            currentNoiseLevel = -100
+            elapsedTime = 0
+            breathCount = 0
+        }
+
+        await loadActiveProfile()
+    }
 }

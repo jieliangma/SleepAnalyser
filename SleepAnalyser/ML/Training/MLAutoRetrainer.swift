@@ -10,6 +10,11 @@ final class MLAutoRetrainer: @unchecked Sendable {
         try? FileManager.default.createDirectory(at: storageDir, withIntermediateDirectories: true)
     }
 
+    func deleteAllFeedback() {
+        try? FileManager.default.removeItem(at: storageDir)
+        try? FileManager.default.createDirectory(at: storageDir, withIntermediateDirectories: true)
+    }
+
     func addConfirmedSample(noiseType: String, features: [String: Double], segmentId: UUID) {
         let file = storageDir.appendingPathComponent("confirmed_samples.jsonl")
 

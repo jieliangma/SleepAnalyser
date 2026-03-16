@@ -143,4 +143,9 @@ final class NoiseCaptureRecorder: @unchecked Sendable {
     func deleteCapture(_ info: CaptureInfo) {
         try? FileManager.default.removeItem(at: info.directoryURL)
     }
+
+    func deleteAllCaptures() {
+        try? FileManager.default.removeItem(at: storageDir)
+        try? FileManager.default.createDirectory(at: storageDir, withIntermediateDirectories: true)
+    }
 }
