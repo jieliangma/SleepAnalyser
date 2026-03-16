@@ -472,53 +472,44 @@ struct NoiseTrainingDetailView: View {
                 }
                 let existingSD = try? bgContext.fetch(FetchDescriptor<SDNoiseSegment>(predicate: existingPred)).first
                 let segId: UUID
+                let sdObject: SDNoiseSegment
                 if let sd = existingSD {
                     segId = sd.id
                     sd.noiseType = noiseType.rawValue
                     sd.confidence = Double(avgConf)
                     sd.energyDB = energyDB
                     sd.ampData = ampData
+                    sdObject = sd
                 } else {
                     segId = UUID()
-                    bgContext.insert(SDNoiseSegment(
+                    let newSD = SDNoiseSegment(
                         id: segId, sessionId: captureId,
                         timestamp: capDate, endTime: capDate.addingTimeInterval(capDur),
                         noiseType: noiseType.rawValue, confidence: Double(avgConf),
                         energyDB: energyDB, layer: layerIdx, ampData: ampData
-                    ))
+                    )
+                    bgContext.insert(newSD)
+                    sdObject = newSD
                 }
 
                 let sourceClipURL = captureDir.appendingPathComponent("source_\(layerIdx).caf")
-                let existingClipPath = existingSD?.audioClipPath
+                let existingClipPath = sdObject.audioClipPath
                 let clipURL: URL?
                 if let p = existingClipPath,
-                   p != sourceClipURL.path,
                    FileManager.default.fileExists(atPath: p) {
                     clipURL = URL(fileURLWithPath: p)
                 } else if !Task.isCancelled {
                     try? FileManager.default.removeItem(at: sourceClipURL)
-                    let pcmSettings: [String: Any] = [
-                        AVFormatIDKey: kAudioFormatLinearPCM,
-                        AVSampleRateKey: sr,
-                        AVNumberOfChannelsKey: 1,
-                        AVLinearPCMBitDepthKey: 32,
-                        AVLinearPCMIsFloatKey: true,
-                        AVLinearPCMIsBigEndianKey: false,
-                    ]
                     clipURL = Self.writeBandAudio(
                         sourceURL: audioURL, outputURL: sourceClipURL,
                         noiseType: noiseType, sampleRate: Float(sr),
-                        pcmSettings: pcmSettings
+                        pcmSettings: [:]
                     )
+                    if let url = clipURL {
+                        sdObject.audioClipPath = url.path
+                    }
                 } else {
                     return nil
-                }
-
-                if let clipURL {
-                    let clipPred = #Predicate<SDNoiseSegment> { $0.id == segId }
-                    if let sd = try? bgContext.fetch(FetchDescriptor<SDNoiseSegment>(predicate: clipPred)).first {
-                        sd.audioClipPath = clipURL.path
-                    }
                 }
 
                 tracks.append(SourceTrack(
@@ -740,47 +731,48 @@ struct NoiseTrainingDetailView: View {
 
     private func mixAudio(urls: [URL], comboId: UUID) async -> URL? {
         return await Task.detached(priority: .userInitiated) {
-            let engine = AVAudioEngine()
-            let mixer = engine.mainMixerNode
+            guard !urls.isEmpty else { return nil }
 
-            var players: [AVAudioPlayerNode] = []
-            var buffers: [(AVAudioPlayerNode, AVAudioPCMBuffer)] = []
-            var maxLength: AVAudioFramePosition = 0
-
+            var allSamples: [[Float]] = []
+            var sr: Double = 16000
             for url in urls {
-                guard let file = try? AVAudioFile(forReading: url),
-                      let buf = AVAudioPCMBuffer(pcmFormat: file.processingFormat,
-                                                  frameCapacity: AVAudioFrameCount(file.length)),
-                      let _ = try? file.read(into: buf) else { continue }
-                let node = AVAudioPlayerNode()
-                engine.attach(node)
-                engine.connect(node, to: mixer, format: file.processingFormat)
-                buffers.append((node, buf))
-                players.append(node)
-                maxLength = max(maxLength, file.length)
+                guard let file = try? AVAudioFile(forReading: url) else { continue }
+                sr = file.processingFormat.sampleRate
+                let count = AVAudioFrameCount(file.length)
+                guard let buf = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: count),
+                      let _ = try? file.read(into: buf, frameCount: count),
+                      let ch = buf.floatChannelData else { continue }
+                allSamples.append(Array(UnsafeBufferPointer(start: ch[0], count: Int(buf.frameLength))))
             }
-            guard !players.isEmpty, let format = buffers.first?.1.format else { return nil }
+            guard !allSamples.isEmpty else { return nil }
+
+            let maxLen = allSamples.map(\.count).max()!
+            var mixed = [Float](repeating: 0, count: maxLen)
+            for track in allSamples {
+                for i in 0..<track.count { mixed[i] += track[i] }
+            }
+            let peak = mixed.map(abs).max() ?? 1
+            if peak > 1.0 { mixed = mixed.map { $0 / peak } }
 
             let outURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("combo_\(comboId.uuidString.prefix(8)).m4a")
-            guard let outFile = try? AVAudioFile(forWriting: outURL, settings: format.settings) else { return nil }
-
-            engine.prepare()
-            guard let _ = try? engine.start() else { return nil }
-            for (node, buf) in buffers { node.scheduleBuffer(buf); node.play() }
-
-            let outBuf = AVAudioPCMBuffer(pcmFormat: format,
-                                           frameCapacity: AVAudioFrameCount(maxLength))!
-            outBuf.frameLength = AVAudioFrameCount(maxLength)
-
-            let sinkNode = engine.outputNode
-            sinkNode.installTap(onBus: 0, bufferSize: 4096, format: format) { buf, _ in
-                try? outFile.write(from: buf)
+                .appendingPathComponent("combo_\(comboId.uuidString.prefix(8)).caf")
+            let outSettings: [String: Any] = [
+                AVFormatIDKey: kAudioFormatLinearPCM,
+                AVSampleRateKey: sr,
+                AVNumberOfChannelsKey: 1,
+                AVLinearPCMBitDepthKey: 32,
+                AVLinearPCMIsFloatKey: true,
+                AVLinearPCMIsBigEndianKey: false,
+            ]
+            guard let outFmt = AVAudioFormat(settings: outSettings),
+                  let outFile = try? AVAudioFile(forWriting: outURL, settings: outSettings),
+                  let outBuf = AVAudioPCMBuffer(pcmFormat: outFmt,
+                                                frameCapacity: AVAudioFrameCount(maxLen)) else { return nil }
+            outBuf.frameLength = AVAudioFrameCount(maxLen)
+            if let outData = outBuf.floatChannelData {
+                mixed.withUnsafeBufferPointer { src in outData[0].update(from: src.baseAddress!, count: maxLen) }
             }
-
-            Thread.sleep(forTimeInterval: Double(maxLength) / format.sampleRate + 0.2)
-            sinkNode.removeTap(onBus: 0)
-            engine.stop()
+            guard let _ = try? outFile.write(from: outBuf) else { return nil }
             return outURL
         }.value
     }
