@@ -83,8 +83,8 @@ private struct AudioSettingsSection: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: AppSpacing.xs) {
-                audioSubTabButton(L10n.audio, tag: 0)
-                audioSubTabButton(L10n.noiseAnalysis, tag: 1)
+                audioSubTabButton(L10n.noiseAnalysis, tag: 0)
+                audioSubTabButton(L10n.audioInput, tag: 1)
                 audioSubTabButton(L10n.noiseTypes, tag: 2)
                 audioSubTabButton(L10n.audioFilterTest, tag: 3)
             }
@@ -93,11 +93,11 @@ private struct AudioSettingsSection: View {
             .padding(.bottom, AppSpacing.xs)
 
             switch audioSubTab {
-            case 0:
+            case 0: NoiseAnalysisView()
+            case 1:
                 ScrollView {
                     VStack(spacing: AppSpacing.lg) { AudioSection() }.padding(AppSpacing.lg)
                 }
-            case 1: NoiseAnalysisView()
             case 2: NoiseTypeManagementView()
             case 3:
                 ScrollView {
