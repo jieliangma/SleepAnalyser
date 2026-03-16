@@ -53,6 +53,21 @@ final class MLAutoRetrainer: @unchecked Sendable {
         checkAndRetrain()
     }
 
+    func removeConfirmedSample(segmentId: UUID) {
+        let file = storageDir.appendingPathComponent("confirmed_samples.jsonl")
+        guard let content = try? String(contentsOf: file, encoding: .utf8) else { return }
+        let idString = segmentId.uuidString
+        let filtered = content.components(separatedBy: "\n").filter { line in
+            guard !line.isEmpty else { return false }
+            guard let data = line.data(using: .utf8),
+                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else { return true }
+            return (obj["segmentId"] as? String) != idString
+        }.joined(separator: "\n")
+        let output = filtered.isEmpty ? "" : filtered + "\n"
+        try? output.write(to: file, atomically: true, encoding: .utf8)
+    }
+
     func confirmedCount() -> Int {
         let file = storageDir.appendingPathComponent("confirmed_samples.jsonl")
         guard let content = try? String(contentsOf: file, encoding: .utf8) else { return 0 }

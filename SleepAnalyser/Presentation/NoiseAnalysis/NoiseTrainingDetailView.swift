@@ -686,18 +686,23 @@ struct NoiseTrainingDetailView: View {
             ))
         }
         try? context.save()
-        guard track.isConfirmed else { return }
         let clipURL = track.audioClipURL
         let noiseType = track.noiseType.rawValue
         let segId = track.id
-        Task.detached(priority: .utility) { [retrainer = appState.mlRetrainer] in
-            let features: [String: Double]
-            if let url = clipURL {
-                features = NoiseSeparatorBridge.extractFeaturesFromFile(url)
-            } else {
-                features = ["rms_energy": Double(pow(10.0 as Float, Float(energyDB) / 20.0))]
+        if track.isConfirmed {
+            Task.detached(priority: .utility) { [retrainer = appState.mlRetrainer] in
+                let features: [String: Double]
+                if let url = clipURL {
+                    features = NoiseSeparatorBridge.extractFeaturesFromFile(url)
+                } else {
+                    features = ["rms_energy": Double(pow(10.0 as Float, Float(energyDB) / 20.0))]
+                }
+                retrainer.addConfirmedSample(noiseType: noiseType, features: features, segmentId: segId)
             }
-            retrainer.addConfirmedSample(noiseType: noiseType, features: features, segmentId: segId)
+        } else {
+            Task.detached(priority: .utility) { [retrainer = appState.mlRetrainer] in
+                retrainer.removeConfirmedSample(segmentId: segId)
+            }
         }
     }
 
@@ -921,6 +926,7 @@ private struct SourceTrackView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: AppSpacing.cardCornerRadius))
         .contentShape(Rectangle())
+        .onTapGesture { onTap() }
         .onAppear {
             selectedType = track.noiseType.rawValue
             noteText = track.userLabel ?? ""
@@ -958,6 +964,10 @@ private struct SourceTrackView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(AppColors.primary)
             }
+
+            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                .font(.system(size: 14))
+                .foregroundStyle(isSelected ? AppColors.primary : AppColors.textTertiary)
         }
         .padding(.horizontal, AppSpacing.cardPadding).padding(.vertical, AppSpacing.sm)
     }
@@ -988,15 +998,24 @@ private struct SourceTrackView: View {
             Button {
                 track.noiseType = NoiseTypeLabel(rawValue: selectedType) ?? track.noiseType
                 track.userLabel = noteText.isEmpty ? nil : noteText
-                track.isConfirmed = true
+                track.isConfirmed.toggle()
                 onConfirm(track)
             } label: {
-                Label("确认标注", systemImage: "checkmark.circle.fill")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(track.isConfirmed ? AppColors.success : AppColors.primary)
-                    .padding(.horizontal, 10).padding(.vertical, 4)
-                    .background((track.isConfirmed ? AppColors.success : AppColors.primary).opacity(0.1))
-                    .clipShape(Capsule())
+                if track.isConfirmed {
+                    Label("已标注", systemImage: "checkmark.circle.fill")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(AppColors.success)
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                        .background(AppColors.success.opacity(0.12))
+                        .clipShape(Capsule())
+                } else {
+                    Label("确认标注", systemImage: "checkmark.circle.fill")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(AppColors.primary)
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                        .background(AppColors.primary.opacity(0.1))
+                        .clipShape(Capsule())
+                }
             }
             .buttonStyle(.plain)
         }
