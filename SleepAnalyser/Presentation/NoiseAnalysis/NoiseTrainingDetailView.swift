@@ -489,11 +489,12 @@ struct NoiseTrainingDetailView: View {
                 let sourceClipURL = captureDir.appendingPathComponent("source_\(layerIdx).caf")
                 let existingClipPath = existingSD?.audioClipPath
                 let clipURL: URL?
-                if FileManager.default.fileExists(atPath: sourceClipURL.path) {
-                    clipURL = sourceClipURL
-                } else if let p = existingClipPath, FileManager.default.fileExists(atPath: p) {
+                if let p = existingClipPath,
+                   p != sourceClipURL.path,
+                   FileManager.default.fileExists(atPath: p) {
                     clipURL = URL(fileURLWithPath: p)
                 } else if !Task.isCancelled {
+                    try? FileManager.default.removeItem(at: sourceClipURL)
                     let pcmSettings: [String: Any] = [
                         AVFormatIDKey: kAudioFormatLinearPCM,
                         AVSampleRateKey: sr,
@@ -543,28 +544,38 @@ struct NoiseTrainingDetailView: View {
         noiseType: NoiseTypeLabel, sampleRate: Float,
         pcmSettings: [String: Any]
     ) -> URL? {
-        guard let sourceFile = try? AVAudioFile(forReading: sourceURL) else { return nil }
-        let frameCount = AVAudioFrameCount(sourceFile.length)
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: sourceFile.processingFormat, frameCapacity: frameCount),
-              let _ = try? sourceFile.read(into: buffer, frameCount: frameCount),
-              let channelData = buffer.floatChannelData else { return nil }
-        let separator = NoiseSeparatorBridge(fftSize: 1024, sampleRate: sampleRate)
-        let (lo, hi) = noiseType.bandHz
-        let count = Int(buffer.frameLength)
-        let filtered = separator.extractBand(
-            input: Array(UnsafeBufferPointer(start: channelData[0], count: count)),
-            lowHz: lo, highHz: hi, sampleRate: sampleRate
-        )
-        guard let outFile = try? AVAudioFile(forWriting: outputURL, settings: pcmSettings),
+        guard let sourceFile = try? AVAudioFile(forReading: sourceURL),
               let pcmFormat = AVAudioFormat(settings: pcmSettings),
-              let outBuffer = AVAudioPCMBuffer(pcmFormat: pcmFormat, frameCapacity: AVAudioFrameCount(count)) else { return nil }
-        outBuffer.frameLength = AVAudioFrameCount(count)
-        if let outData = outBuffer.floatChannelData {
-            filtered.withUnsafeBufferPointer { src in
-                outData[0].update(from: src.baseAddress!, count: count)
+              let outFile = try? AVAudioFile(forWriting: outputURL, settings: pcmSettings) else { return nil }
+
+        let (lo, hi) = noiseType.bandHz
+        let chunkSize = 2048
+        let readFormat = sourceFile.processingFormat
+        guard let readBuffer = AVAudioPCMBuffer(pcmFormat: readFormat,
+                                                frameCapacity: AVAudioFrameCount(chunkSize)) else { return nil }
+        guard let writeBuffer = AVAudioPCMBuffer(pcmFormat: pcmFormat,
+                                                 frameCapacity: AVAudioFrameCount(chunkSize)) else { return nil }
+        let separator = NoiseSeparatorBridge(fftSize: 1024, sampleRate: sampleRate)
+
+        while sourceFile.framePosition < sourceFile.length {
+            guard let _ = try? sourceFile.read(into: readBuffer,
+                                               frameCount: AVAudioFrameCount(chunkSize)) else { break }
+            guard let channelData = readBuffer.floatChannelData else { break }
+            let frameLen = Int(readBuffer.frameLength)
+            guard frameLen > 0 else { break }
+
+            let samples = Array(UnsafeBufferPointer(start: channelData[0], count: frameLen))
+            let filtered = separator.extractBand(input: samples, lowHz: lo, highHz: hi, sampleRate: sampleRate)
+
+            writeBuffer.frameLength = AVAudioFrameCount(frameLen)
+            if let outData = writeBuffer.floatChannelData {
+                filtered.withUnsafeBufferPointer { src in
+                    outData[0].update(from: src.baseAddress!, count: frameLen)
+                }
             }
+            guard let _ = try? outFile.write(from: writeBuffer) else { break }
         }
-        guard let _ = try? outFile.write(from: outBuffer) else { return nil }
+
         return outputURL
     }
 
