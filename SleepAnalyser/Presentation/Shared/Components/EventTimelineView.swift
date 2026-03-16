@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct EventTimelineView: View {
     let events: [AudioEvent]
@@ -9,7 +10,16 @@ struct EventTimelineView: View {
             HStack(spacing: AppSpacing.sm) {
                 ForEach(events) { event in
                     eventCard(event)
-                        .onTapGesture { onTap?(event) }
+                        .onHover { hovering in
+                            if hovering && event.hasAudioClip {
+                                NSCursor.pointingHand.set()
+                            } else {
+                                NSCursor.arrow.set()
+                            }
+                        }
+                        .onTapGesture {
+                            if event.hasAudioClip { onTap?(event) }
+                        }
                 }
             }
             .padding(.horizontal, 2)
@@ -30,7 +40,7 @@ struct EventTimelineView: View {
             Text(event.startAt, style: .time)
                 .font(AppTypography.caption)
                 .foregroundStyle(AppColors.textTertiary)
-            if event.audioClipURL != nil {
+            if event.hasAudioClip {
                 Image(systemName: "play.circle.fill")
                     .font(.system(size: 12))
                     .foregroundStyle(AppColors.primary)

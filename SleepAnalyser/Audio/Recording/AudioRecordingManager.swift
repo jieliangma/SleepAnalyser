@@ -86,7 +86,7 @@ final class AudioRecordingManager: @unchecked Sendable {
         guard !ringBuffer.isEmpty else { return nil }
         let clipData = Array(ringBuffer.suffix(min(clipSamples, ringBuffer.count)))
         guard let sessionDir = currentSessionDir else { return nil }
-        let url = sessionDir.appendingPathComponent("clip_\(eventId.uuidString.prefix(8)).caf")
+        let url = sessionDir.appendingPathComponent("clip_\(eventId.uuidString.prefix(8)).m4a")
         guard let writer = try? AudioFileWriter(url: url, sampleRate: sampleRate) else { return nil }
         writer.write(clipData)
         writer.close()
@@ -110,11 +110,32 @@ final class AudioRecordingManager: @unchecked Sendable {
         }
     }
 
+    func cleanupIfNeeded() {
+        let maxSize = StorageSettings.maxSizeBytes
+        let maxDays = StorageSettings.maxRetentionDays
+        let cutoffDate = Calendar.current.date(byAdding: .day, value: -maxDays, to: Date()) ?? Date()
+        var recordings = allRecordings()
+
+        for rec in recordings where rec.date < cutoffDate {
+            try? FileManager.default.removeItem(at: rec.directoryURL)
+        }
+        recordings = allRecordings()
+
+        var totalSize = recordings.reduce(Int64(0)) { $0 + $1.totalSize }
+        var idx = recordings.count - 1
+        while totalSize > maxSize && idx >= 0 {
+            let rec = recordings[idx]
+            try? FileManager.default.removeItem(at: rec.directoryURL)
+            totalSize -= rec.totalSize
+            idx -= 1
+        }
+    }
+
     func segmentURLs(for sessionId: UUID) -> [URL] {
         guard let dir = findSessionDir(sessionId) else { return [] }
         let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
         return files
-            .filter { $0.pathExtension == "caf" && $0.lastPathComponent.hasPrefix("seg_") }
+            .filter { ($0.pathExtension == "m4a" || $0.pathExtension == "caf") && $0.lastPathComponent.hasPrefix("seg_") }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
     }
 
@@ -145,7 +166,7 @@ final class AudioRecordingManager: @unchecked Sendable {
                   let sessionId = UUID(uuidString: idStr) else { continue }
 
             let segments = (try? FileManager.default.contentsOfDirectory(at: item, includingPropertiesForKeys: nil))?
-                .filter { $0.pathExtension == "caf" && $0.lastPathComponent.hasPrefix("seg_") } ?? []
+                .filter { ($0.pathExtension == "m4a" || $0.pathExtension == "caf") && $0.lastPathComponent.hasPrefix("seg_") } ?? []
             guard !segments.isEmpty else { continue }
 
             let totalSize = segments.reduce(Int64(0)) { sum, url in
@@ -180,7 +201,7 @@ final class AudioRecordingManager: @unchecked Sendable {
 
     private func openNewSegment() throws {
         guard let sessionDir = currentSessionDir else { return }
-        let filename = String(format: "seg_%04d.caf", segmentIndex)
+        let filename = String(format: "seg_%04d.m4a", segmentIndex)
         let url = sessionDir.appendingPathComponent(filename)
         currentWriter = try AudioFileWriter(url: url, sampleRate: sampleRate)
         samplesInSegment = 0
@@ -200,15 +221,46 @@ final class AudioFileWriter {
 
     init(url: URL, sampleRate: Double) throws {
         self.url = url
-        var asbd = AudioStreamBasicDescription(
+
+        var fileASBD = AudioStreamBasicDescription(
+            mSampleRate: sampleRate,
+            mFormatID: kAudioFormatMPEG4AAC,
+            mFormatFlags: 0,
+            mBytesPerPacket: 0, mFramesPerPacket: 1024, mBytesPerFrame: 0,
+            mChannelsPerFrame: 1, mBitsPerChannel: 0, mReserved: 0
+        )
+
+        let status = ExtAudioFileCreateWithURL(
+            url as CFURL, kAudioFileM4AType, &fileASBD, nil,
+            AudioFileFlags.eraseFile.rawValue, &audioFile
+        )
+        guard status == noErr, let audioFile else {
+            throw AudioCaptureError.engineStartFailed(
+                NSError(domain: "AudioFileWriter", code: Int(status))
+            )
+        }
+
+        var clientASBD = AudioStreamBasicDescription(
             mSampleRate: sampleRate,
             mFormatID: kAudioFormatLinearPCM,
             mFormatFlags: kAudioFormatFlagIsFloat | kAudioFormatFlagIsPacked,
             mBytesPerPacket: 4, mFramesPerPacket: 1, mBytesPerFrame: 4,
             mChannelsPerFrame: 1, mBitsPerChannel: 32, mReserved: 0
         )
-        let status = ExtAudioFileCreateWithURL(url as CFURL, kAudioFileCAFType, &asbd, nil, AudioFileFlags.eraseFile.rawValue, &audioFile)
-        guard status == noErr else { throw AudioCaptureError.engineStartFailed(NSError(domain: "AudioFileWriter", code: Int(status))) }
+        let clientStatus = ExtAudioFileSetProperty(
+            audioFile,
+            kExtAudioFileProperty_ClientDataFormat,
+            UInt32(MemoryLayout<AudioStreamBasicDescription>.size),
+            &clientASBD
+        )
+        guard clientStatus == noErr else {
+            ExtAudioFileDispose(audioFile)
+            self.audioFile = nil
+            throw AudioCaptureError.engineStartFailed(
+                NSError(domain: "AudioFileWriter", code: Int(clientStatus))
+            )
+        }
+        self.audioFile = audioFile
     }
 
     func write(_ samples: [Float]) {

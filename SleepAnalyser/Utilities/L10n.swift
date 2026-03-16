@@ -225,4 +225,16 @@ enum L10n {
     static var exportMLData: String { s("ml.export") }
     static var confirmAllNoise: String { s("noise.confirmAll") }
     static var addNoiseType: String { s("noise.addType") }
+
+    // MARK: - Storage Management
+    static var storage: String { s("settings.storage") }
+    static var storageManagement: String { s("settings.storageManagement") }
+    static var maxStorageSize: String { s("settings.maxStorageSize") }
+    static var maxStorageDays: String { s("settings.maxStorageDays") }
+    static var currentUsage: String { s("settings.currentUsage") }
+    static var recordingCount: String { s("settings.recordingCount") }
+    static var storageNote: String { s("settings.storageNote") }
+    static func storageDaysValue(_ d: Int) -> String {
+        String(format: s("settings.storageDaysFormat"), d)
+    }
 }

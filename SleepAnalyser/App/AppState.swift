@@ -66,6 +66,7 @@ final class AppState {
 
         Task { await loadActiveProfile() }
         checkMicPermission()
+        recordingManager.cleanupIfNeeded()
     }
 
     private func checkMicPermission() {
@@ -166,6 +167,7 @@ final class AppState {
         timerTask = nil
         captureService.stopCapture()
         recordingManager.stopNightRecording()
+        recordingManager.cleanupIfNeeded()
         pipeline.reset()
 
         guard var session = activeSession else { return }

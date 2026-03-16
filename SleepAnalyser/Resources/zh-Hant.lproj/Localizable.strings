@@ -183,3 +183,12 @@
 "noise.confirmAll" = "全部確認並訓練";
 "noise.addType" = "新增噪聲類型";
 "nav.noiseTypes" = "噪聲類型";
+
+"settings.storage" = "儲存";
+"settings.storageManagement" = "儲存空間管理";
+"settings.maxStorageSize" = "最大儲存空間";
+"settings.maxStorageDays" = "最長保留天數";
+"settings.currentUsage" = "目前使用";
+"settings.recordingCount" = "錄音數量";
+"settings.storageNote" = "超過限制時，最舊的錄音將被自動刪除。";
+"settings.storageDaysFormat" = "%d 天";

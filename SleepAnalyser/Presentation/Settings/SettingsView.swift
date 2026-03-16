@@ -14,10 +14,11 @@ struct SettingsView: View {
 
     private var settingsTabs: some View {
         HStack(spacing: AppSpacing.xs) {
-            tabButton(L10n.audio, icon: "mic.fill", tag: 0)
-            tabButton(L10n.language, icon: "globe", tag: 1)
-            tabButton(L10n.privacy, icon: "lock.fill", tag: 2)
-            tabButton(L10n.about, icon: "info.circle.fill", tag: 3)
+            tabButton(L10n.storage, icon: "internaldrive.fill", tag: 0)
+            tabButton(L10n.audio, icon: "mic.fill", tag: 1)
+            tabButton(L10n.language, icon: "globe", tag: 2)
+            tabButton(L10n.privacy, icon: "lock.fill", tag: 3)
+            tabButton(L10n.about, icon: "info.circle.fill", tag: 4)
         }
         .padding(.horizontal, AppSpacing.lg)
         .padding(.top, AppSpacing.lg)
@@ -46,15 +47,117 @@ private struct TabContent: View {
         ScrollView {
             VStack(spacing: AppSpacing.lg) {
                 switch selectedTab {
-                case 0: AudioSection()
-                case 1: LanguageSection()
-                case 2: PrivacySection()
-                case 3: AboutSection()
+                case 0: StorageSection()
+                case 1: AudioSection()
+                case 2: LanguageSection()
+                case 3: PrivacySection()
+                case 4: AboutSection()
                 default: EmptyView()
                 }
             }
             .padding(AppSpacing.lg)
         }
+    }
+}
+
+private struct StorageSection: View {
+    @Environment(AppState.self) private var appState
+    @State private var maxSizeGB: Double = Double(StorageSettings.maxSizeBytes) / (1024 * 1024 * 1024)
+    @State private var maxDays: Double = Double(StorageSettings.maxRetentionDays)
+    @State private var currentUsageBytes: Int64 = 0
+    @State private var recordingCount: Int = 0
+
+    var body: some View {
+        SettingsCard(title: L10n.storageManagement, icon: "internaldrive.fill") {
+            VStack(alignment: .leading, spacing: AppSpacing.md) {
+                usageRow
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(L10n.maxStorageSize).font(AppTypography.caption).foregroundStyle(AppColors.textSecondary)
+                        Spacer()
+                        Text(formatGB(maxSizeGB)).font(AppTypography.caption).foregroundStyle(AppColors.textPrimary)
+                    }
+                    Slider(value: $maxSizeGB, in: 1...30, step: 1)
+                        .tint(AppColors.primary)
+                        .onChange(of: maxSizeGB) { _, val in
+                            StorageSettings.maxSizeBytes = Int64(val * 1024 * 1024 * 1024)
+                        }
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(L10n.maxStorageDays).font(AppTypography.caption).foregroundStyle(AppColors.textSecondary)
+                        Spacer()
+                        Text(L10n.storageDaysValue(Int(maxDays))).font(AppTypography.caption).foregroundStyle(AppColors.textPrimary)
+                    }
+                    Slider(value: $maxDays, in: 1...365, step: 1)
+                        .tint(AppColors.primary)
+                        .onChange(of: maxDays) { _, val in
+                            StorageSettings.maxRetentionDays = Int(val)
+                        }
+                }
+
+                Text(L10n.storageNote)
+                    .font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
+            }
+        }
+        .onAppear { refreshUsage() }
+    }
+
+    private var usageRow: some View {
+        HStack(spacing: AppSpacing.md) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L10n.currentUsage).font(AppTypography.caption).foregroundStyle(AppColors.textSecondary)
+                Text(formatBytes(currentUsageBytes))
+                    .font(AppTypography.headline).foregroundStyle(AppColors.textPrimary)
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(L10n.recordingCount).font(AppTypography.caption).foregroundStyle(AppColors.textSecondary)
+                Text("\(recordingCount)")
+                    .font(AppTypography.headline).foregroundStyle(AppColors.textPrimary)
+            }
+        }
+        .padding(AppSpacing.sm)
+        .background(AppColors.background)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func refreshUsage() {
+        let recordings = appState.recordingManager.allRecordings()
+        recordingCount = recordings.count
+        currentUsageBytes = recordings.reduce(0) { $0 + $1.totalSize }
+    }
+
+    private func formatGB(_ gb: Double) -> String {
+        gb.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(gb)) GB" : String(format: "%.1f GB", gb)
+    }
+
+    private func formatBytes(_ bytes: Int64) -> String {
+        let mb = Double(bytes) / 1_048_576
+        return mb >= 1024 ? String(format: "%.1f GB", mb / 1024) : String(format: "%.1f MB", mb)
+    }
+}
+
+enum StorageSettings {
+    private static let maxSizeKey = "storage.maxSizeBytes"
+    private static let maxDaysKey = "storage.maxRetentionDays"
+
+    static var maxSizeBytes: Int64 {
+        get {
+            let val = UserDefaults.standard.integer(forKey: maxSizeKey)
+            return val > 0 ? Int64(val) : 10 * 1024 * 1024 * 1024
+        }
+        set { UserDefaults.standard.set(Int(newValue), forKey: maxSizeKey) }
+    }
+
+    static var maxRetentionDays: Int {
+        get {
+            let val = UserDefaults.standard.integer(forKey: maxDaysKey)
+            return val > 0 ? val : 7
+        }
+        set { UserDefaults.standard.set(newValue, forKey: maxDaysKey) }
     }
 }
 

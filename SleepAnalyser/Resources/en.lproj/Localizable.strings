@@ -183,3 +183,12 @@
 "noise.confirmAll" = "Confirm All & Train";
 "noise.addType" = "Add Noise Type";
 "nav.noiseTypes" = "Noise Types";
+
+"settings.storage" = "Storage";
+"settings.storageManagement" = "Storage Management";
+"settings.maxStorageSize" = "Max Storage Size";
+"settings.maxStorageDays" = "Max Retention Days";
+"settings.currentUsage" = "Current Usage";
+"settings.recordingCount" = "Recordings";
+"settings.storageNote" = "Oldest recordings are automatically deleted when limits are exceeded.";
+"settings.storageDaysFormat" = "%d days";

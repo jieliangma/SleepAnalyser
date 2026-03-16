@@ -39,7 +39,7 @@ final class NoiseCaptureRecorder: @unchecked Sendable {
         let meta: [String: String] = ["captureId": id.uuidString, "startDate": ISO8601DateFormatter().string(from: Date())]
         try JSONSerialization.data(withJSONObject: meta).write(to: dir.appendingPathComponent("capture.json"))
 
-        let audioURL = dir.appendingPathComponent("audio.caf")
+        let audioURL = dir.appendingPathComponent("audio.m4a")
         writer = try AudioFileWriter(url: audioURL, sampleRate: sampleRate)
         return id
     }
@@ -74,13 +74,16 @@ final class NoiseCaptureRecorder: @unchecked Sendable {
     }
 
     func audioURL(for captureDir: URL) -> URL? {
-        let url = captureDir.appendingPathComponent("audio.caf")
-        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+        let m4a = captureDir.appendingPathComponent("audio.m4a")
+        if FileManager.default.fileExists(atPath: m4a.path) { return m4a }
+        let caf = captureDir.appendingPathComponent("audio.caf")
+        if FileManager.default.fileExists(atPath: caf.path) { return caf }
+        return nil
     }
 
     func extractClip(from captureDir: URL, startTime: TimeInterval, endTime: TimeInterval, clipId: UUID) -> URL? {
         guard let sourceURL = audioURL(for: captureDir) else { return nil }
-        let clipURL = captureDir.appendingPathComponent("clip_\(clipId.uuidString.prefix(8)).caf")
+        let clipURL = captureDir.appendingPathComponent("clip_\(clipId.uuidString.prefix(8)).m4a")
 
         guard let sourceFile = try? AVAudioFile(forReading: sourceURL) else { return nil }
         let sr = sourceFile.processingFormat.sampleRate
@@ -127,7 +130,7 @@ final class NoiseCaptureRecorder: @unchecked Sendable {
                   let meta = try? JSONSerialization.jsonObject(with: data) as? [String: String],
                   let idStr = meta["captureId"], let id = UUID(uuidString: idStr),
                   let dateStr = meta["startDate"], let date = ISO8601DateFormatter().date(from: dateStr) else { return nil }
-            let audioFile = item.appendingPathComponent("audio.caf")
+            let audioFile = audioURL(for: item) ?? item.appendingPathComponent("audio.m4a")
             let size = Int64((try? FileManager.default.attributesOfItem(atPath: audioFile.path)[.size] as? Int) ?? 0)
             var duration = Double(meta["duration"] ?? "0") ?? 0
             if duration <= 0 && size > 0 {
