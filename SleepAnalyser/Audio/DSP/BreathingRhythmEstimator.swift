@@ -18,7 +18,6 @@ final class BreathingRhythmEstimator: Sendable {
         let envelope = computeRMSEnvelope(samples, windowSize: Int(sampleRate * 0.1))
         let autocorr = computeAutocorrelation(envelope)
 
-        // BPM range → lag range in envelope samples
         let envelopeRate = sampleRate / Double(max(Int(sampleRate * 0.1), 1))
         let minLag = Int(60.0 / maxBPM * envelopeRate)
         let maxLag = Int(60.0 / minBPM * envelopeRate)
@@ -36,15 +35,22 @@ final class BreathingRhythmEstimator: Sendable {
             }
         }
 
+        let midLag = (minLag + maxLag) / 2
+        let noiseRegion = Array(autocorr[midLag..<min(maxLag, autocorr.count)])
+        let noiseFloor: Float = noiseRegion.isEmpty ? 0 : noiseRegion.reduce(0, +) / Float(noiseRegion.count)
+        let prominence = peakVal > 1e-10 ? (peakVal - noiseFloor) / peakVal : 0
+        let isValid = prominence > 0.3 && peakVal > 0.15
+
         let bpm = peakLag > 0 ? 60.0 * envelopeRate / Double(peakLag) : 0
         let regularity = Double(max(0, min(1, peakVal)))
         var rms: Float = 0
         vDSP_rmsqv(samples, 1, &rms, vDSP_Length(samples.count))
 
         return BreathingSample(
-            breathsPerMinute: min(maxBPM, max(minBPM, bpm)),
-            regularity: regularity,
-            amplitude: Double(rms)
+            breathsPerMinute: isValid ? min(maxBPM, max(minBPM, bpm)) : 0,
+            regularity: isValid ? regularity : 0,
+            amplitude: Double(rms),
+            isValid: isValid
         )
     }
 
@@ -64,7 +70,6 @@ final class BreathingRhythmEstimator: Sendable {
         return envelope
     }
 
-    // Normalized autocorrelation for periodicity detection
     private func computeAutocorrelation(_ signal: [Float]) -> [Float] {
         let n = signal.count
         guard n > 1 else { return [] }

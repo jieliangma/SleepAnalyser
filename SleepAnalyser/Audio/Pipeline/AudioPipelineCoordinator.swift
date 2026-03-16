@@ -41,7 +41,7 @@ final class AudioPipelineCoordinator: @unchecked Sendable {
     private let envelopeWindowSize = 8
     private var prevEnvelopeRising = false
     private var peakCooldown: Int = 0
-    private let peakCooldownFrames = 20
+    private let peakCooldownFrames = 500
 
     init(preprocessor: AudioPreprocessor = AudioPreprocessor(),
          noiseSuppressor: NoiseSuppressor = NoiseSuppressor(),
@@ -197,7 +197,9 @@ final class AudioPipelineCoordinator: @unchecked Sendable {
             let features = featureExtractor.extractFeatures(from: processedForFeatures)
             let breathing = breathingEstimator.estimate(from: breathData)
 
-            breathFilter.adapt(detectedBPM: breathing.breathsPerMinute)
+            if breathing.isValid {
+                breathFilter.adapt(detectedBPM: breathing.breathsPerMinute)
+            }
 
             let noiseLayers = noiseSeparator.decomposeMultiLayer(samples: suppressed)
             let noiseBands = noiseSeparator.computeBandEnergy(samples: suppressed)

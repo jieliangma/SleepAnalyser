@@ -1,8 +1,9 @@
 import Foundation
 import Accelerate
 
-final class AudioPreprocessor: Sendable {
+final class AudioPreprocessor: @unchecked Sendable {
     private let preEmphasisCoeff: Float = 0.97
+    private var runningPeak: Float = 0.001
 
     func process(frame: AudioFrame) -> ProcessedFrame {
         var samples = frame.samples
@@ -40,11 +41,12 @@ final class AudioPreprocessor: Sendable {
     }
 
     private func normalize(_ samples: [Float]) -> [Float] {
-        var maxVal: Float = 0
-        vDSP_maxmgv(samples, 1, &maxVal, vDSP_Length(samples.count))
-        guard maxVal > 0 else { return samples }
+        var frameMax: Float = 0
+        vDSP_maxmgv(samples, 1, &frameMax, vDSP_Length(samples.count))
+        runningPeak = max(runningPeak * 0.999, frameMax)
+        guard runningPeak > 0 else { return samples }
         var result = [Float](repeating: 0, count: samples.count)
-        var scale = 1.0 / maxVal
+        var scale = 1.0 / runningPeak
         vDSP_vsmul(samples, 1, &scale, &result, 1, vDSP_Length(samples.count))
         return result
     }
