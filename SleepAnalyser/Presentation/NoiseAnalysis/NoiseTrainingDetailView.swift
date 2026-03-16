@@ -879,6 +879,8 @@ private struct SourceTrackView: View {
     let onConfirm: (NoiseTrainingDetailView.SourceTrack) -> Void
 
     @State private var selectedType: String = ""
+    @State private var noteText: String = ""
+    @State private var showNote = false
 
     private var isPlaying: Bool {
         appState.audioPlayer.isPlaying && appState.audioPlayer.playingEventId == track.id
@@ -886,63 +888,129 @@ private struct SourceTrackView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: AppSpacing.sm) {
-                Image(systemName: track.noiseType.sfSymbol)
-                    .font(.system(size: 12))
-                    .foregroundStyle(noiseColor(track.noiseType.rawValue))
-                Text(track.noiseType.displayName)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(AppColors.textPrimary)
-                Text(String(format: "%.0f%%", track.confidence * 100))
-                    .font(.system(size: 10)).foregroundStyle(AppColors.textTertiary)
-
-                Button {
-                    guard let url = track.audioClipURL else { return }
-                    if isPlaying { appState.audioPlayer.stop() }
-                    else { appState.audioPlayer.play(url: url, eventId: track.id) }
-                } label: {
-                    Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 11))
-                        .foregroundStyle(track.audioClipURL != nil ? AppColors.primary : AppColors.textTertiary)
-                }
-                .buttonStyle(.plain)
-                .disabled(track.audioClipURL == nil)
-                .help(track.audioClipURL == nil ? "声源音频生成中..." : "")
-
-                Spacer()
-
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 12))
-                        .foregroundStyle(AppColors.primary)
-                }
-
-                Picker("", selection: $selectedType) {
-                    ForEach(NoiseTypeLabel.allCases, id: \.rawValue) { t in
-                        Label(t.displayName, systemImage: t.sfSymbol).tag(t.rawValue)
-                    }
-                }
-                .pickerStyle(.menu).labelsHidden()
-                .frame(width: 110)
-                .font(.system(size: 11))
-                .onChange(of: selectedType) { _, newVal in
-                    track.noiseType = NoiseTypeLabel(rawValue: newVal) ?? track.noiseType
-                    onConfirm(track)
-                }
-            }
-            .padding(.horizontal, AppSpacing.cardPadding).padding(.vertical, AppSpacing.sm)
-
+            headerRow
             sourceWaveform
+            if showNote { noteRow }
+            labelRow
         }
         .background(isSelected ? AppColors.primary.opacity(0.06) : AppColors.surface)
         .overlay(
             RoundedRectangle(cornerRadius: AppSpacing.cardCornerRadius)
-                .stroke(isSelected ? AppColors.primary.opacity(0.4) : Color.clear, lineWidth: 1.5)
+                .stroke(
+                    track.isConfirmed ? AppColors.success.opacity(0.4) :
+                    isSelected ? AppColors.primary.opacity(0.4) : Color.clear,
+                    lineWidth: 1.5
+                )
         )
         .clipShape(RoundedRectangle(cornerRadius: AppSpacing.cardCornerRadius))
         .contentShape(Rectangle())
         .onTapGesture { onTap() }
-        .onAppear { selectedType = track.noiseType.rawValue }
+        .onAppear {
+            selectedType = track.noiseType.rawValue
+            noteText = track.userLabel ?? ""
+        }
+    }
+
+    private var headerRow: some View {
+        HStack(spacing: AppSpacing.sm) {
+            Image(systemName: track.noiseType.sfSymbol)
+                .font(.system(size: 12))
+                .foregroundStyle(noiseColor(track.noiseType.rawValue))
+            Text(track.noiseType.displayName)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(AppColors.textPrimary)
+            Text(String(format: "%.0f%%", track.confidence * 100))
+                .font(.system(size: 10)).foregroundStyle(AppColors.textTertiary)
+
+            Button {
+                guard let url = track.audioClipURL else { return }
+                if isPlaying { appState.audioPlayer.stop() }
+                else { appState.audioPlayer.play(url: url, eventId: track.id) }
+            } label: {
+                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(track.audioClipURL != nil ? AppColors.primary : AppColors.textTertiary)
+            }
+            .buttonStyle(.plain)
+            .disabled(track.audioClipURL == nil)
+            .help(track.audioClipURL == nil ? "声源音频生成中..." : "")
+
+            Spacer()
+
+            if track.isConfirmed {
+                HStack(spacing: 3) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 10))
+                    Text("已标注")
+                        .font(.system(size: 10))
+                }
+                .foregroundStyle(AppColors.success)
+                .padding(.horizontal, 7).padding(.vertical, 3)
+                .background(AppColors.success.opacity(0.1))
+                .clipShape(Capsule())
+            }
+
+            if isSelected {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(AppColors.primary)
+            }
+        }
+        .padding(.horizontal, AppSpacing.cardPadding).padding(.vertical, AppSpacing.sm)
+    }
+
+    private var labelRow: some View {
+        HStack(spacing: AppSpacing.sm) {
+            Picker("", selection: $selectedType) {
+                ForEach(NoiseTypeLabel.allCases, id: \.rawValue) { t in
+                    Label(t.displayName, systemImage: t.sfSymbol).tag(t.rawValue)
+                }
+            }
+            .pickerStyle(.menu).labelsHidden()
+            .frame(width: 120)
+            .font(.system(size: 11))
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) { showNote.toggle() }
+            } label: {
+                Image(systemName: showNote ? "note.text.badge.plus" : "note.text")
+                    .font(.system(size: 11))
+                    .foregroundStyle(noteText.isEmpty ? AppColors.textTertiary : AppColors.primary)
+            }
+            .buttonStyle(.plain)
+            .help("添加备注")
+
+            Spacer()
+
+            Button {
+                track.noiseType = NoiseTypeLabel(rawValue: selectedType) ?? track.noiseType
+                track.userLabel = noteText.isEmpty ? nil : noteText
+                track.isConfirmed = true
+                onConfirm(track)
+            } label: {
+                Label("确认标注", systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(track.isConfirmed ? AppColors.success : AppColors.primary)
+                    .padding(.horizontal, 10).padding(.vertical, 4)
+                    .background((track.isConfirmed ? AppColors.success : AppColors.primary).opacity(0.1))
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, AppSpacing.cardPadding).padding(.bottom, AppSpacing.sm)
+    }
+
+    @ViewBuilder
+    private var noteRow: some View {
+        HStack(spacing: AppSpacing.xs) {
+            Image(systemName: "text.bubble").font(.system(size: 10)).foregroundStyle(AppColors.textTertiary)
+            TextField("备注（可选）", text: $noteText)
+                .font(.system(size: 11))
+                .textFieldStyle(.plain)
+        }
+        .padding(.horizontal, AppSpacing.cardPadding)
+        .padding(.vertical, 6)
+        .background(AppColors.surfaceLight.opacity(0.5))
     }
 
     private var sourceWaveform: some View {
@@ -980,7 +1048,7 @@ private struct SourceTrackView: View {
             .frame(width: baseW, height: 50)
         }
         .frame(height: 50)
-        .padding(.horizontal, AppSpacing.cardPadding).padding(.bottom, AppSpacing.sm)
+        .padding(.horizontal, AppSpacing.cardPadding).padding(.bottom, 4)
     }
 
     private func noiseColor(_ type: String) -> Color {
