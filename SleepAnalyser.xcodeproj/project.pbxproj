@@ -110,6 +110,9 @@
 		62715958867D3D4B1D21F506 = {isa = PBXBuildFile; fileRef = 26F51C1AADE6FAB86EE58C2D; };
 		4665ADEA6F325262972DB701 = {isa = PBXBuildFile; fileRef = 7290B19BE8B5443A8042DEB8; };
 		4125710DCF44C2B0893D80DE = {isa = PBXBuildFile; fileRef = E9FB4EA52D13803E104FF848; };
+		AAA00001DEADBEEF00000013 = {isa = PBXBuildFile; fileRef = AAA00001DEADBEEF00000003 /* SleepFeedbackCard.swift */; };
+		AAA00001DEADBEEF00000012 = {isa = PBXBuildFile; fileRef = AAA00001DEADBEEF00000002 /* SleepFeedbackStore.swift */; };
+		AAA00001DEADBEEF00000011 = {isa = PBXBuildFile; fileRef = AAA00001DEADBEEF00000001 /* EpochDataExporter.swift */; };
 		E75D839B0A4ED5713094E702 = {isa = PBXBuildFile; fileRef = 45B6EF68CD2065F2730422D0; };
 		16121BC22F55CE5B26C047A1 = {isa = PBXBuildFile; fileRef = B5DB5990131ED88A7182FE7A; };
 		A431967D61C1F08546AAA4F0 = {isa = PBXBuildFile; fileRef = E35AE04E9F765B44838133D1; };
@@ -263,6 +266,8 @@
 		6C88D8C0CCE7C64E62B4435A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HMMPostProcessor.swift"; sourceTree = "<group>"; };
 		609D7C7D736C75864126B8D2 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepCycleConstraintEngine.swift"; sourceTree = "<group>"; };
 		DF61E8404BB59964F2E5F0E3 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MLAutoRetrainer.swift"; sourceTree = "<group>"; };
+		AAA00001DEADBEEF00000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepFeedbackStore.swift"; sourceTree = "<group>"; };
+		AAA00001DEADBEEF00000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EpochDataExporter.swift"; sourceTree = "<group>"; };
 		3C420E3FEB304391BF44BB7B = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DashboardView.swift"; sourceTree = "<group>"; };
 		EC2B4CCCD2BC27884A735175 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MenuBarView.swift"; sourceTree = "<group>"; };
 		C30C5E8E87277A7BEE4FBD9F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoiseAnalysisView.swift"; sourceTree = "<group>"; };
@@ -272,6 +277,7 @@
 		26F51C1AADE6FAB86EE58C2D = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioRecordingsView.swift"; sourceTree = "<group>"; };
 		7290B19BE8B5443A8042DEB8 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EventEditorView.swift"; sourceTree = "<group>"; };
 		E9FB4EA52D13803E104FF848 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningReportView.swift"; sourceTree = "<group>"; };
+		AAA00001DEADBEEF00000003 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepFeedbackCard.swift"; sourceTree = "<group>"; };
 		45B6EF68CD2065F2730422D0 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TrendsView.swift"; sourceTree = "<group>"; };
 		B5DB5990131ED88A7182FE7A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RoomManagementView.swift"; sourceTree = "<group>"; };
 		E35AE04E9F765B44838133D1 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LiveSessionView.swift"; sourceTree = "<group>"; };
@@ -605,7 +611,7 @@
 		};
 		FAF00E625278A13BCA69DCCE = {
 			isa = PBXGroup;
-			children = (DF61E8404BB59964F2E5F0E3);
+			children = (DF61E8404BB59964F2E5F0E3, AAA00001DEADBEEF00000001 /* EpochDataExporter.swift */, AAA00001DEADBEEF00000002 /* SleepFeedbackStore.swift */);
 			path = "Training";
 			sourceTree = "<group>";
 		};
@@ -659,7 +665,7 @@
 		};
 		AD11562FFD94E4BA7137000F = {
 			isa = PBXGroup;
-			children = (E9FB4EA52D13803E104FF848, 45B6EF68CD2065F2730422D0);
+			children = (E9FB4EA52D13803E104FF848, 45B6EF68CD2065F2730422D0, AAA00001DEADBEEF00000003 /* SleepFeedbackCard.swift */);
 			path = "Reports";
 			sourceTree = "<group>";
 		};
@@ -990,6 +996,9 @@
 				62715958867D3D4B1D21F506,
 				4665ADEA6F325262972DB701,
 				4125710DCF44C2B0893D80DE,
+				AAA00001DEADBEEF00000013,
+				AAA00001DEADBEEF00000012,
+				AAA00001DEADBEEF00000011,
 				E75D839B0A4ED5713094E702,
 				16121BC22F55CE5B26C047A1,
 				A431967D61C1F08546AAA4F0,

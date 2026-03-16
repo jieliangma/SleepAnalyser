@@ -6,12 +6,17 @@ final class SpectralFeatureExtractor: Sendable {
     private let numMelBands: Int
     private let numMFCC: Int
     private let sampleRate: Double
+    private let melFilterbank: [[Float]]
 
     init(fftSize: Int = 1024, numMelBands: Int = 40, numMFCC: Int = 13, sampleRate: Double = 16000) {
         self.fftSize = fftSize
         self.numMelBands = numMelBands
         self.numMFCC = numMFCC
         self.sampleRate = sampleRate
+        self.melFilterbank = SpectralFeatureExtractor.buildMelFilterbank(
+            fftSize: fftSize, numBands: numMelBands,
+            sampleRate: sampleRate, fMin: 80.0, fMax: sampleRate / 2
+        )
     }
 
     func extractFeatures(from frame: ProcessedFrame) -> FeatureVector {
@@ -37,6 +42,49 @@ final class SpectralFeatureExtractor: Sendable {
             breathingPeriodicity: 0,
             breathIntervalVariability: 0
         )
+    }
+
+    private static func hzToMel(_ hz: Double) -> Double {
+        return 2595.0 * log10(1.0 + hz / 700.0)
+    }
+
+    private static func melToHz(_ mel: Double) -> Double {
+        return 700.0 * (pow(10.0, mel / 2595.0) - 1.0)
+    }
+
+    private static func buildMelFilterbank(
+        fftSize: Int, numBands: Int, sampleRate: Double, fMin: Double, fMax: Double
+    ) -> [[Float]] {
+        let numBins = fftSize / 2
+        let freqResolution = sampleRate / Double(fftSize)
+
+        let melMin = hzToMel(fMin)
+        let melMax = hzToMel(fMax)
+        var melPoints = [Double](repeating: 0, count: numBands + 2)
+        for i in 0..<(numBands + 2) {
+            melPoints[i] = melMin + Double(i) * (melMax - melMin) / Double(numBands + 1)
+        }
+        let hzPoints = melPoints.map { melToHz($0) }
+        let binPoints = hzPoints.map { Int(($0 / freqResolution).rounded()) }
+
+        var filterbank = [[Float]](repeating: [Float](repeating: 0, count: numBins), count: numBands)
+        for m in 0..<numBands {
+            let left   = binPoints[m]
+            let center = binPoints[m + 1]
+            let right  = binPoints[m + 2]
+            for k in 0..<numBins {
+                if k > left && k < center {
+                    let denom = center - left
+                    filterbank[m][k] = denom > 0 ? Float(k - left) / Float(denom) : 0
+                } else if k == center {
+                    filterbank[m][k] = 1.0
+                } else if k > center && k < right {
+                    let denom = right - center
+                    filterbank[m][k] = denom > 0 ? Float(right - k) / Float(denom) : 0
+                }
+            }
+        }
+        return filterbank
     }
 
     private func computeFFTMagnitude(_ samples: [Float]) -> [Float] {
@@ -66,23 +114,21 @@ final class SpectralFeatureExtractor: Sendable {
         return mag
     }
 
-    // Approximate mel filterbank energies
     private func computeMelEnergies(_ magnitude: [Float]) -> [Float] {
         guard !magnitude.isEmpty else { return [Float](repeating: 0, count: numMelBands) }
-        let binsPerBand = max(1, magnitude.count / numMelBands)
+        let numBins = min(magnitude.count, fftSize / 2)
         var energies = [Float](repeating: 0, count: numMelBands)
-        for band in 0..<numMelBands {
-            let start = band * binsPerBand
-            let end = min(start + binsPerBand, magnitude.count)
-            guard start < end else { continue }
-            var sum: Float = 0
-            for i in start..<end { sum += magnitude[i] * magnitude[i] }
-            energies[band] = log(max(sum / Float(end - start), 1e-10))
+        for m in 0..<numMelBands {
+            var energy: Float = 0
+            let filter = melFilterbank[m]
+            for k in 0..<numBins {
+                energy += filter[k] * magnitude[k] * magnitude[k]
+            }
+            energies[m] = log(max(energy, 1e-10))
         }
         return energies
     }
 
-    // DCT-II on log mel energies to get MFCC
     private func computeMFCC(_ melEnergies: [Float]) -> [Float] {
         let n = melEnergies.count
         var mfcc = [Float](repeating: 0, count: numMFCC)

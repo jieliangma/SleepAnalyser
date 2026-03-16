@@ -5,6 +5,7 @@ struct MorningReportView: View {
     @State private var report: MorningReport?
     @State private var epochs: [SleepEpoch] = []
     @State private var selectedEvent: AudioEvent?
+    @State private var sessionId: UUID?
 
     var body: some View {
         ScrollView {
@@ -15,6 +16,9 @@ struct MorningReportView: View {
                     stagesSection
                     eventsSection(report)
                     insightsSection(report)
+                    if let sid = sessionId {
+                        SleepFeedbackCard(sessionId: sid, epochs: epochs)
+                    }
                 }
                 .padding(AppSpacing.lg)
             } else {
@@ -89,6 +93,7 @@ struct MorningReportView: View {
     private func loadReport() async {
         if let r = appState.generateReport() {
             report = r
+            sessionId = r.sessionId
             epochs = appState.epochHistory
             return
         }
@@ -101,6 +106,7 @@ struct MorningReportView: View {
             s.events = (try? await appState.sessionRepo.getEvents(forSession: latest.id)) ?? []
             await MainActor.run {
                 epochs = s.epochs
+                sessionId = latest.id
                 report = appState.reportGenerator.generateMorningReport(session: s)
             }
         }

@@ -1,6 +1,178 @@
 #!/usr/bin/env python3
 """
-Train 3 Core ML models for SleepAnalyser:
+Train SleepStageClassifier from real epoch data collected by SleepAnalyser.
+
+Usage:
+    python3 train_models.py --data path/to/epoch_labels.csv [--corrections path/to/corrections.csv]
+
+The CSV must have columns:
+    timestamp, stage, confidence,
+    mfcc_0..mfcc_12,
+    spectral_centroid, spectral_rolloff, spectral_flatness,
+    zero_crossing_rate, rms_energy,
+    breathing_periodicity, breath_interval_variability
+
+Corrections CSV (optional, user-supplied high-confidence labels):
+    timestamp, stage
+    (matched to epoch_labels by nearest timestamp, overrides weak label with 5x weight)
+"""
+import argparse
+import os
+import sys
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.metrics import classification_report
+import coremltools as ct
+
+FEATURE_NAMES = [
+    "mfcc_0", "mfcc_1", "mfcc_2", "mfcc_3", "mfcc_4", "mfcc_5",
+    "mfcc_6", "mfcc_7", "mfcc_8", "mfcc_9", "mfcc_10", "mfcc_11", "mfcc_12",
+    "spectral_centroid", "spectral_rolloff", "spectral_flatness",
+    "zero_crossing_rate", "rms_energy",
+    "breathing_periodicity", "breath_interval_variability"
+]
+
+VALID_STAGES = {"awake", "n1", "n2", "n3", "rem"}
+
+OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "SleepAnalyser", "Resources", "ML")
+
+
+def load_data(csv_path, corrections_path=None):
+    df = pd.read_csv(csv_path)
+    df = df[df["stage"].isin(VALID_STAGES)].copy()
+    df = df.dropna(subset=FEATURE_NAMES + ["stage", "confidence"])
+    print(f"Loaded {len(df)} labeled epochs from {csv_path}")
+
+    weights = df["confidence"].clip(0.0, 1.0).values.copy()
+
+    if corrections_path and os.path.exists(corrections_path):
+        corrections = pd.read_csv(corrections_path)
+        corrections = corrections[corrections["stage"].isin(VALID_STAGES)]
+        corrections["timestamp"] = pd.to_datetime(corrections["timestamp"], utc=True)
+        df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+
+        matched = 0
+        for _, row in corrections.iterrows():
+            diffs = (df["timestamp"] - row["timestamp"]).abs()
+            idx = diffs.idxmin()
+            if diffs[idx].total_seconds() < 60:
+                df.at[idx, "stage"] = row["stage"]
+                weights[df.index.get_loc(idx)] = 5.0
+                matched += 1
+        print(f"Applied {matched} user corrections (weight 5x)")
+
+    X = df[FEATURE_NAMES].values.astype(np.float32)
+    y = df["stage"].values
+    return X, y, weights
+
+
+def train(X, y, weights):
+    print(f"\nClass distribution:\n{pd.Series(y).value_counts().to_string()}")
+
+    pipe = Pipeline([
+        ("scaler", StandardScaler()),
+        ("clf", GradientBoostingClassifier(
+            n_estimators=150,
+            max_depth=5,
+            learning_rate=0.1,
+            subsample=0.8,
+            random_state=42
+        ))
+    ])
+
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    cv_scores = cross_val_score(pipe, X, y, cv=cv, scoring="accuracy", n_jobs=-1)
+    print(f"\n5-fold CV accuracy: {cv_scores.mean():.3f} ± {cv_scores.std():.3f}")
+    print(f"Per-fold: {[f'{s:.3f}' for s in cv_scores]}")
+
+    pipe.fit(X, y, clf__sample_weight=weights)
+    train_pred = pipe.predict(X)
+    print(f"\nTraining set report:\n{classification_report(y, train_pred)}")
+
+    return pipe, cv_scores.mean()
+
+
+def save_model(pipe, cv_accuracy, out_dir):
+    os.makedirs(out_dir, exist_ok=True)
+
+    model = ct.converters.sklearn.convert(
+        pipe,
+        input_features=FEATURE_NAMES,
+        output_feature_names="predictedStage"
+    )
+    model.author = "SleepAnalyser"
+    model.short_description = f"GradientBoosting sleep stage classifier (CV acc={cv_accuracy:.3f})"
+    model.input_description["breathing_periodicity"] = "Breathing rate in BPM (6-30)"
+    model.input_description["rms_energy"] = "RMS energy of audio epoch"
+
+    mlmodel_path = os.path.join(out_dir, "SleepStageClassifier.mlmodel")
+    model.save(mlmodel_path)
+    print(f"\nSaved: {mlmodel_path}")
+
+    import subprocess, shutil
+    mlmodelc_path = os.path.join(out_dir, "SleepStageClassifier.mlmodelc")
+    if os.path.exists(mlmodelc_path):
+        shutil.rmtree(mlmodelc_path)
+    result = subprocess.run(
+        ["xcrun", "coremlcompiler", "compile", mlmodel_path, out_dir],
+        capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        print(f"Compile warning: {result.stderr}")
+    else:
+        print(f"Compiled: {mlmodelc_path}")
+    os.remove(mlmodel_path)
+
+    import json
+    meta_path = os.path.join(out_dir, "model_meta.json")
+    with open(meta_path, "w") as f:
+        json.dump({"cv_accuracy": cv_accuracy, "trained_at": pd.Timestamp.now().isoformat()}, f)
+
+    return cv_accuracy
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data", required=True, help="Path to epoch_labels.csv")
+    parser.add_argument("--corrections", default=None, help="Path to user corrections CSV")
+    parser.add_argument("--min-epochs", type=int, default=500,
+                        help="Minimum labeled epochs required (default 500)")
+    parser.add_argument("--min-accuracy", type=float, default=0.70,
+                        help="Minimum CV accuracy to deploy (default 0.70)")
+    args = parser.parse_args()
+
+    if not os.path.exists(args.data):
+        print(f"Error: data file not found: {args.data}")
+        sys.exit(1)
+
+    X, y, weights = load_data(args.data, args.corrections)
+
+    if len(X) < args.min_epochs:
+        print(f"Insufficient data: {len(X)} epochs < {args.min_epochs} minimum. Collect more sleep data.")
+        sys.exit(2)
+
+    min_class_count = pd.Series(y).value_counts().min()
+    if min_class_count < 5:
+        print(f"Warning: some classes have < 5 samples. Results may be unreliable.")
+
+    pipe, cv_acc = train(X, y, weights)
+
+    if cv_acc < args.min_accuracy:
+        print(f"\nCV accuracy {cv_acc:.3f} < threshold {args.min_accuracy}. NOT deploying model.")
+        print("Suggestions: collect more data, review corrections, or lower --min-accuracy.")
+        sys.exit(3)
+
+    save_model(pipe, cv_acc, OUT_DIR)
+    print(f"\nDone. Model deployed to {OUT_DIR}")
+
+
+if __name__ == "__main__":
+    main()
+
 1. SleepStageClassifier - predicts sleep stage from audio features
 2. SnoreDetector - binary snore vs non-snore
 3. NoiseContextClassifier - classifies noise environment

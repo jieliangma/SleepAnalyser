@@ -24,6 +24,8 @@ final class AppState {
     let roomRepo: RoomRepository
     let noiseCaptureRecorder: NoiseCaptureRecorder
     let noiseTypeManager: NoiseTypeManager
+    let epochExporter: EpochDataExporter
+    let feedbackStore: SleepFeedbackStore
 
     var activeSession: SleepSession?
     var activeProfile: UserProfile?
@@ -62,6 +64,8 @@ final class AppState {
         self.roomRepo = RoomRepository(persistence: persistence)
         self.noiseCaptureRecorder = NoiseCaptureRecorder()
         self.noiseTypeManager = NoiseTypeManager()
+        self.epochExporter = EpochDataExporter()
+        self.feedbackStore = SleepFeedbackStore()
 
         Task { await loadActiveProfile() }
         checkMicPermission()
@@ -185,6 +189,12 @@ final class AppState {
     private func processOutput(_ output: PipelineOutput, session: SleepSession) async {
         let prediction = inferenceEngine.predict(features: output.features, context: output.contextFlags)
         let smoothed = postProcessor.smooth(prediction: prediction, history: epochHistory)
+
+        epochExporter.record(
+            features: output.features,
+            stage: smoothed.rawValue,
+            confidence: prediction.confidence
+        )
 
         let epoch = SleepEpoch(
             sessionId: session.id,
