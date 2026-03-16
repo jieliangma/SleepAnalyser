@@ -300,15 +300,15 @@ struct NoiseAnalysisView: View {
             let maxOffset = max(0, totalW - baseW)
             let clampedOffset = min(max(0, -panOffset), maxOffset)
 
+            TimelineView(.animation(minimumInterval: 0.05, paused: appState.audioPlayer.playingEventId != capture.id || !appState.audioPlayer.isPlaying)) { _ in
             Canvas { context, size in
                 let h = size.height, midY = h / 2
                 guard !amps.isEmpty else { return }
 
                 let maxAmp = amps.max() ?? 1
                 let ampScale: Float = maxAmp > 0 ? 1.0 / maxAmp : 1.0
-                let totalDur = appState.audioPlayer.duration > 0
-                    ? appState.audioPlayer.duration
-                    : Double(amps.count) / 15.0
+                let captureDur = capture.duration > 0 ? capture.duration : Double(amps.count) / 15.0
+                let totalDur = captureDur
 
                 let visibleStart = clampedOffset / totalW
                 let visibleEnd = min(1.0, (clampedOffset + baseW) / totalW)
@@ -360,6 +360,8 @@ struct NoiseAnalysisView: View {
                         with: .color(.white.opacity(0.6)), lineWidth: 1
                     )
                 }
+            }
+            .frame(width: baseW, height: 100)
             }
             .frame(width: baseW, height: 100)
             .contentShape(Rectangle())
