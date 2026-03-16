@@ -14,10 +14,12 @@ final class SDNoiseSegment {
     var isConfirmed: Bool
     var userLabel: String?
     var layer: Int
+    var ampData: Data?
 
     init(id: UUID = UUID(), sessionId: UUID, timestamp: Date, endTime: Date,
          noiseType: String, confidence: Double = 0.5, energyDB: Double = -50,
-         audioClipPath: String? = nil, isConfirmed: Bool = false, userLabel: String? = nil, layer: Int = 0) {
+         audioClipPath: String? = nil, isConfirmed: Bool = false, userLabel: String? = nil,
+         layer: Int = 0, ampData: Data? = nil) {
         self.id = id
         self.sessionId = sessionId
         self.timestamp = timestamp
@@ -29,5 +31,6 @@ final class SDNoiseSegment {
         self.isConfirmed = isConfirmed
         self.userLabel = userLabel
         self.layer = layer
+        self.ampData = ampData
     }
 }

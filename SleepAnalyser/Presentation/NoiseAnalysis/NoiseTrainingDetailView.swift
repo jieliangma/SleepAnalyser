@@ -461,6 +461,7 @@ struct NoiseTrainingDetailView: View {
                 for (bin, energy) in info.peakBins { trackAmps[bin] = energy }
                 let maxE = trackAmps.max() ?? 1
                 if maxE > 0 { trackAmps = trackAmps.map { $0 / maxE } }
+                let ampData = trackAmps.withUnsafeBytes { Data($0) }
                 let avgConf: Float = min(info.totalEnergy / Float(info.frames) * 5, 0.95)
                 let avgEnergy = info.totalEnergy / Float(max(info.frames, 1))
                 let energyDB = avgEnergy > 0 ? Double(20 * log10(avgEnergy)) : -60.0
@@ -476,13 +477,14 @@ struct NoiseTrainingDetailView: View {
                     sd.noiseType = noiseType.rawValue
                     sd.confidence = Double(avgConf)
                     sd.energyDB = energyDB
+                    sd.ampData = ampData
                 } else {
                     segId = UUID()
                     bgContext.insert(SDNoiseSegment(
                         id: segId, sessionId: captureId,
                         timestamp: capDate, endTime: capDate.addingTimeInterval(capDur),
                         noiseType: noiseType.rawValue, confidence: Double(avgConf),
-                        energyDB: energyDB, layer: layerIdx
+                        energyDB: energyDB, layer: layerIdx, ampData: ampData
                     ))
                 }
 
@@ -787,18 +789,29 @@ struct NoiseTrainingDetailView: View {
         let totalDur = resolvedDuration > 0 ? resolvedDuration : max(1, Double(amps.count) / 15.0)
         let restoredTracks: [SourceTrack] = layerSegs.compactMap { sd in
             guard let type = NoiseTypeLabel(rawValue: sd.noiseType) else { return nil }
-            let segDur = sd.endTime.timeIntervalSince(sd.timestamp)
-            let startRatio = sd.timestamp.timeIntervalSince(capture.date) / totalDur
-            let endRatio = min(1.0, startRatio + segDur / totalDur)
-            let startBin = Int(startRatio * Double(ampBinCount))
-            let endBin = min(ampBinCount, Int(endRatio * Double(ampBinCount)))
-            var trackAmps = [Float](repeating: 0, count: ampBinCount)
-            if !amps.isEmpty {
-                let maxAmp = amps.max() ?? 1
-                for bin in startBin..<endBin where bin < amps.count {
-                    trackAmps[bin] = amps[bin] / max(maxAmp, 1)
+
+            let trackAmps: [Float]
+            if let data = sd.ampData, data.count >= MemoryLayout<Float>.size {
+                let floatCount = data.count / MemoryLayout<Float>.size
+                trackAmps = data.withUnsafeBytes { ptr in
+                    Array(ptr.bindMemory(to: Float.self).prefix(floatCount))
                 }
+            } else {
+                let segDur = sd.endTime.timeIntervalSince(sd.timestamp)
+                let startRatio = sd.timestamp.timeIntervalSince(capture.date) / totalDur
+                let endRatio = min(1.0, startRatio + segDur / totalDur)
+                let startBin = Int(startRatio * Double(ampBinCount))
+                let endBin = min(ampBinCount, Int(endRatio * Double(ampBinCount)))
+                var fallback = [Float](repeating: 0, count: ampBinCount)
+                if !amps.isEmpty {
+                    let maxAmp = amps.max() ?? 1
+                    for bin in startBin..<endBin where bin < amps.count {
+                        fallback[bin] = amps[bin] / max(maxAmp, 1)
+                    }
+                }
+                trackAmps = fallback
             }
+
             return SourceTrack(
                 id: sd.id, layer: sd.layer,
                 noiseType: type, confidence: Float(sd.confidence),
