@@ -1069,6 +1069,13 @@ private struct SourceTrackView: View {
                 .frame(width: baseW, height: 50)
             }
             .frame(width: baseW, height: 50)
+            .contentShape(Rectangle())
+            .onTapGesture { loc in
+                if isPlaying && appState.audioPlayer.duration > 0 {
+                    let frac = loc.x / baseW
+                    appState.audioPlayer.seek(to: frac * appState.audioPlayer.duration)
+                }
+            }
         }
         .frame(height: 50)
         .padding(.horizontal, AppSpacing.cardPadding).padding(.bottom, 4)
