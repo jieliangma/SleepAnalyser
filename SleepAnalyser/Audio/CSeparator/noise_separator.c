@@ -220,8 +220,17 @@ ns_noise_type_t ns_classify_noise(
     if (bands->low_mid > bands->mid && bands->bass > bands->high_mid * 1.5f && crest_factor > 3.0f)
         return NS_NOISE_MOTORCYCLE;
 
-    /* Tire noise (traffic): mid-range 500-2000Hz broadband, transient swell, not stationary */
-    if (mid_ratio > 0.3f && bands->mid > bands->bass && crest_factor > 2.5f && !is_stationary)
+    /* Rain: broadband including HIGH freq, stationary OR gentle crest, present high_ratio.
+       Must come BEFORE traffic to avoid tire noise stealing rain classification.
+       Rain has significant presence/brilliance from droplet impacts. */
+    if (high_ratio > 0.20f && bands->total_rms > 0.008f && crest_factor < 5.0f
+        && bands->sub_bass > 0.003f)
+        return NS_NOISE_RAIN;
+
+    /* Tire noise (traffic): mid-range 500-2000Hz broadband, transient swell, not stationary,
+       LOW high_ratio (tire noise mostly mid, not high freq) */
+    if (mid_ratio > 0.3f && bands->mid > bands->bass && crest_factor > 2.5f
+        && !is_stationary && high_ratio < 0.25f)
         return NS_NOISE_TRAFFIC;
 
     /* Engine/heavy traffic: bass dominant, sustained low rumble */
@@ -236,7 +245,7 @@ ns_noise_type_t ns_classify_noise(
     if (bands->mid > total_low && bands->high_mid > bands->bass)
         return NS_NOISE_SPEECH;
 
-    /* Rain: sustained broadband, sub-bass present, stationary, low crest */
+    /* Rain fallback: sustained broadband, stationary, low crest */
     if (bands->sub_bass > 0.005f && bands->total_rms > 0.01f && is_stationary && crest_factor < 4.0f)
         return NS_NOISE_RAIN;
 
@@ -323,7 +332,7 @@ ns_decomposition_t ns_decompose_multilayer(
     float total_energy = 0;
     for (int i = 0; i < count; i++) total_energy += samples[i] * samples[i];
     total_energy = sqrtf(total_energy / (float)count);
-    if (total_energy < 0.003f) { free(band_buf); return result; }
+    if (total_energy < 0.001f) { free(band_buf); return result; }
 
     int found_types[NS_NOISE_COUNT];
     float found_energy[NS_NOISE_COUNT];
@@ -339,7 +348,7 @@ ns_decomposition_t ns_decompose_multilayer(
         band_rms = sqrtf(band_rms / (float)count);
 
         float ratio = band_rms / total_energy;
-        if (ratio < 0.15f) continue;
+        if (ratio < 0.08f) continue;
 
         ns_band_energy_t be = ns_compute_band_energy(band_buf, count, sample_rate);
         float crest = ns_compute_crest_factor(band_buf, count);
