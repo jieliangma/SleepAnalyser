@@ -19,11 +19,10 @@ struct SettingsView: View {
             tabButton(L10n.profiles, icon: "person.2.fill", tag: 0)
             tabButton(L10n.rooms, icon: "house.fill", tag: 1)
             tabButton(L10n.audio, icon: "mic.fill", tag: 2)
-            tabButton(L10n.noiseAnalysis, icon: "waveform.badge.magnifyingglass", tag: 3)
-            tabButton(L10n.storage, icon: "internaldrive.fill", tag: 4)
-            tabButton(L10n.language, icon: "globe", tag: 5)
-            tabButton(L10n.privacy, icon: "lock.fill", tag: 6)
-            tabButton(L10n.about, icon: "info.circle.fill", tag: 7)
+            tabButton(L10n.storage, icon: "internaldrive.fill", tag: 3)
+            tabButton(L10n.language, icon: "globe", tag: 4)
+            tabButton(L10n.privacy, icon: "lock.fill", tag: 5)
+            tabButton(L10n.about, icon: "info.circle.fill", tag: 6)
         }
         .padding(.horizontal, AppSpacing.lg)
         .padding(.top, AppSpacing.lg)
@@ -55,24 +54,20 @@ private struct TabContent: View {
         case 1:
             RoomManagementView()
         case 2:
-            ScrollView {
-                VStack(spacing: AppSpacing.lg) { AudioSection() }.padding(AppSpacing.lg)
-            }
+            AudioSettingsSection()
         case 3:
-            NoiseSettingsSection()
-        case 4:
             ScrollView {
                 VStack(spacing: AppSpacing.lg) { StorageSection() }.padding(AppSpacing.lg)
             }
-        case 5:
+        case 4:
             ScrollView {
                 VStack(spacing: AppSpacing.lg) { LanguageSection() }.padding(AppSpacing.lg)
             }
-        case 6:
+        case 5:
             ScrollView {
                 VStack(spacing: AppSpacing.lg) { PrivacySection() }.padding(AppSpacing.lg)
             }
-        case 7:
+        case 6:
             ScrollView {
                 VStack(spacing: AppSpacing.lg) { AboutSection() }.padding(AppSpacing.lg)
             }
@@ -82,24 +77,29 @@ private struct TabContent: View {
     }
 }
 
-private struct NoiseSettingsSection: View {
-    @State private var noiseSubTab = 0
+private struct AudioSettingsSection: View {
+    @State private var audioSubTab = 0
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: AppSpacing.xs) {
-                noiseSubTabButton(L10n.noiseAnalysis, tag: 0)
-                noiseSubTabButton(L10n.noiseTypes, tag: 1)
-                noiseSubTabButton(L10n.audioFilterTest, tag: 2)
+                audioSubTabButton(L10n.audio, tag: 0)
+                audioSubTabButton(L10n.noiseAnalysis, tag: 1)
+                audioSubTabButton(L10n.noiseTypes, tag: 2)
+                audioSubTabButton(L10n.audioFilterTest, tag: 3)
             }
             .padding(.horizontal, AppSpacing.lg)
             .padding(.top, AppSpacing.sm)
             .padding(.bottom, AppSpacing.xs)
 
-            switch noiseSubTab {
-            case 0: NoiseAnalysisView()
-            case 1: NoiseTypeManagementView()
-            case 2:
+            switch audioSubTab {
+            case 0:
+                ScrollView {
+                    VStack(spacing: AppSpacing.lg) { AudioSection() }.padding(AppSpacing.lg)
+                }
+            case 1: NoiseAnalysisView()
+            case 2: NoiseTypeManagementView()
+            case 3:
                 ScrollView {
                     VStack(spacing: AppSpacing.lg) { AudioFilterTestSection() }.padding(AppSpacing.lg)
                 }
@@ -108,15 +108,15 @@ private struct NoiseSettingsSection: View {
         }
     }
 
-    private func noiseSubTabButton(_ title: String, tag: Int) -> some View {
+    private func audioSubTabButton(_ title: String, tag: Int) -> some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.15)) { noiseSubTab = tag }
+            withAnimation(.easeInOut(duration: 0.15)) { audioSubTab = tag }
         } label: {
             Text(title)
-                .font(.system(size: 12, weight: noiseSubTab == tag ? .semibold : .regular))
-                .foregroundStyle(noiseSubTab == tag ? AppColors.primary : AppColors.textTertiary)
+                .font(.system(size: 12, weight: audioSubTab == tag ? .semibold : .regular))
+                .foregroundStyle(audioSubTab == tag ? AppColors.primary : AppColors.textTertiary)
                 .padding(.horizontal, 10).padding(.vertical, 5)
-                .background(noiseSubTab == tag ? AppColors.primary.opacity(0.08) : Color.clear)
+                .background(audioSubTab == tag ? AppColors.primary.opacity(0.08) : Color.clear)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
         }
         .buttonStyle(.plain)

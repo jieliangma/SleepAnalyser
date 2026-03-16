@@ -10,15 +10,26 @@ final class MLAutoRetrainer: @unchecked Sendable {
         try? FileManager.default.createDirectory(at: storageDir, withIntermediateDirectories: true)
     }
 
-    func addConfirmedSample(noiseType: String, features: [String: Double]) {
-        var row = features
-        row["label"] = nil
+    func addConfirmedSample(noiseType: String, features: [String: Double], segmentId: UUID) {
+        let file = storageDir.appendingPathComponent("confirmed_samples.jsonl")
+
+        if let content = try? String(contentsOf: file, encoding: .utf8) {
+            let idString = segmentId.uuidString
+            let alreadyExists = content.components(separatedBy: "\n").contains { line in
+                guard let data = line.data(using: .utf8),
+                      let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                else { return false }
+                return (obj["segmentId"] as? String) == idString
+            }
+            if alreadyExists { return }
+        }
+
         let entry: [String: Any] = [
             "timestamp": ISO8601DateFormatter().string(from: Date()),
+            "segmentId": segmentId.uuidString,
             "noiseType": noiseType,
             "features": features
         ]
-        let file = storageDir.appendingPathComponent("confirmed_samples.jsonl")
         if let data = try? JSONSerialization.data(withJSONObject: entry),
            var line = String(data: data, encoding: .utf8) {
             line += "\n"
