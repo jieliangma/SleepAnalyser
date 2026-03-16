@@ -1003,11 +1003,11 @@ private struct SourceTrackView: View {
                 onConfirm(track)
             } label: {
                 if track.isConfirmed {
-                    Label("已标注", systemImage: "checkmark.circle.fill")
+                    Label("取消标注", systemImage: "xmark.circle.fill")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(AppColors.success)
+                        .foregroundStyle(Color.red.opacity(0.8))
                         .padding(.horizontal, 10).padding(.vertical, 4)
-                        .background(AppColors.success.opacity(0.12))
+                        .background(Color.red.opacity(0.08))
                         .clipShape(Capsule())
                 } else {
                     Label("确认标注", systemImage: "checkmark.circle.fill")
