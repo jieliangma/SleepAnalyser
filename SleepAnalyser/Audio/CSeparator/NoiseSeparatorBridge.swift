@@ -9,10 +9,38 @@ final class NoiseSeparatorBridge: @unchecked Sendable {
 
     func reset() { ns_reset(&state) }
 
+    func loadRoomNoiseFloor(_ spectrum: [Float]) {
+        spectrum.withUnsafeBufferPointer { buf in
+            ns_load_room_noise_floor(&state, buf.baseAddress, Int32(buf.count))
+        }
+    }
+
+    func addNoiseTemplate(type: ns_noise_type_t, spectrum: [Float]) {
+        spectrum.withUnsafeBufferPointer { buf in
+            ns_add_noise_template(&state, type, buf.baseAddress, Int32(buf.count))
+        }
+    }
+
+    func clearTemplates() { ns_clear_templates(&state) }
+
     func updateNoiseFloor(samples: [Float]) {
         samples.withUnsafeBufferPointer { buf in
             ns_update_noise_floor(&state, buf.baseAddress, Int32(buf.count))
         }
+    }
+
+    func templateEnhancedSeparate(input: [Float]) -> SeparationResult {
+        var fg = [Float](repeating: 0, count: input.count)
+        var bg = [Float](repeating: 0, count: input.count)
+        input.withUnsafeBufferPointer { inBuf in
+            fg.withUnsafeMutableBufferPointer { fgBuf in
+                bg.withUnsafeMutableBufferPointer { bgBuf in
+                    ns_template_enhanced_separate(&state, inBuf.baseAddress, Int32(inBuf.count),
+                                                  fgBuf.baseAddress, bgBuf.baseAddress)
+                }
+            }
+        }
+        return SeparationResult(foreground: fg, background: bg)
     }
 
     struct SeparationResult {
@@ -151,6 +179,19 @@ enum NoiseTypeLabel: String, CaseIterable, Sendable {
         case .rain: return "cloud.rain.fill"
         case .speech: return "person.wave.2.fill"
         case .unknown: return "questionmark.circle.fill"
+        }
+    }
+
+    var toCType: ns_noise_type_t {
+        switch self {
+        case .quiet: return NS_NOISE_QUIET
+        case .wind: return NS_NOISE_WIND
+        case .traffic: return NS_NOISE_TRAFFIC
+        case .motorcycle: return NS_NOISE_MOTORCYCLE
+        case .hvac: return NS_NOISE_HVAC
+        case .rain: return NS_NOISE_RAIN
+        case .speech: return NS_NOISE_SPEECH
+        case .unknown: return NS_NOISE_UNKNOWN
         }
     }
 }

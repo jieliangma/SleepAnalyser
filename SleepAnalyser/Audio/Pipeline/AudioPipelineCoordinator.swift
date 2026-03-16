@@ -1,5 +1,6 @@
 import Foundation
 import Accelerate
+import AVFoundation
 
 struct PipelineOutput: Sendable {
     let timestamp: Date
@@ -18,7 +19,7 @@ struct RealtimeAudioFrame: Sendable {
 final class AudioPipelineCoordinator: @unchecked Sendable {
     private let preprocessor: AudioPreprocessor
     private let noiseSuppressor: NoiseSuppressor
-    private let breathFilter: BandpassBreathFilter
+    private let breathFilter: AdaptiveBreathFilter
     private let noiseSeparator: NoiseSeparatorBridge
     private let featureExtractor: SpectralFeatureExtractor
     private let breathingEstimator: BreathingRhythmEstimator
@@ -44,7 +45,7 @@ final class AudioPipelineCoordinator: @unchecked Sendable {
 
     init(preprocessor: AudioPreprocessor = AudioPreprocessor(),
          noiseSuppressor: NoiseSuppressor = NoiseSuppressor(),
-         breathFilter: BandpassBreathFilter = BandpassBreathFilter(),
+         breathFilter: AdaptiveBreathFilter = AdaptiveBreathFilter(),
          noiseSeparator: NoiseSeparatorBridge = NoiseSeparatorBridge(),
          featureExtractor: SpectralFeatureExtractor = SpectralFeatureExtractor(),
          breathingEstimator: BreathingRhythmEstimator = BreathingRhythmEstimator(),
@@ -77,7 +78,33 @@ final class AudioPipelineCoordinator: @unchecked Sendable {
             )
             baselineRMS = Float(pow(10, room.baselineNoiseLevel / 20))
             roomCalibrated = true
+
+            if let specData = room.noiseFloorSpectrum {
+                let spectrum = specData.withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
+                noiseSeparator.loadRoomNoiseFloor(spectrum)
+            }
         }
+
+        noiseSeparator.clearTemplates()
+        for config in knownNoiseTypes {
+            for clipURL in config.soundClipURLs {
+                if let spectrum = extractSpectrumFromClip(clipURL) {
+                    let cType = NoiseTypeLabel(rawValue: config.name)?.toCType ?? NS_NOISE_UNKNOWN
+                    noiseSeparator.addNoiseTemplate(type: cType, spectrum: spectrum)
+                }
+            }
+        }
+    }
+
+    private func extractSpectrumFromClip(_ url: URL) -> [Float]? {
+        guard let file = try? AVAudioFile(forReading: url) else { return nil }
+        let frameCount = AVAudioFrameCount(min(file.length, 16384))
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: frameCount),
+              let _ = try? file.read(into: buffer, frameCount: frameCount),
+              let channelData = buffer.floatChannelData else { return nil }
+        let samples = Array(UnsafeBufferPointer(start: channelData[0], count: Int(buffer.frameLength)))
+        let bands = noiseSeparator.computeBandEnergy(samples: samples)
+        return [bands.subBass, bands.bass, bands.lowMid, bands.mid, bands.highMid, bands.presence, bands.brilliance]
     }
 
     func makeOutputStream() -> AsyncStream<PipelineOutput> {
@@ -101,7 +128,7 @@ final class AudioPipelineCoordinator: @unchecked Sendable {
         let suppressed = noiseSuppressor.suppress(processed.samples)
 
         noiseSeparator.updateNoiseFloor(samples: suppressed)
-        let separation = noiseSeparator.separate(input: suppressed)
+        let separation = noiseSeparator.templateEnhancedSeparate(input: suppressed)
         let foreground = separation.foreground
 
         var rms: Float = 0
@@ -170,7 +197,10 @@ final class AudioPipelineCoordinator: @unchecked Sendable {
             let features = featureExtractor.extractFeatures(from: processedForFeatures)
             let breathing = breathingEstimator.estimate(from: breathData)
 
+            breathFilter.adapt(detectedBPM: breathing.breathsPerMinute)
+
             let noiseLayers = noiseSeparator.decomposeMultiLayer(samples: suppressed)
+            let noiseBands = noiseSeparator.computeBandEnergy(samples: suppressed)
             var contextFlags: [String] = []
             if !events.isEmpty { contextFlags.append("has_events") }
             if processed.noiseLevel > -20 { contextFlags.append("high_noise") }
@@ -179,6 +209,9 @@ final class AudioPipelineCoordinator: @unchecked Sendable {
             for layer in noiseLayers {
                 contextFlags.append("noise_\(layer.type.rawValue)")
             }
+            contextFlags.append("noise_rms_\(String(format: "%.4f", noiseBands.totalRMS))")
+            contextFlags.append("noise_bass_\(String(format: "%.4f", noiseBands.bass))")
+            contextFlags.append("noise_mid_\(String(format: "%.4f", noiseBands.mid))")
 
             let output = PipelineOutput(
                 timestamp: epochStart,

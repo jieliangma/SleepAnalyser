@@ -1,15 +1,25 @@
 import Foundation
 import Accelerate
 
-final class BandpassBreathFilter: Sendable {
-    let lowCutoff: Float
-    let highCutoff: Float
+final class AdaptiveBreathFilter: @unchecked Sendable {
+    private var lowCutoff: Float = 200
+    private var highCutoff: Float = 2000
     private let sampleRate: Float
+    private var lastBPM: Double = 0
+    private var adaptCount: Int = 0
 
-    init(lowCutoff: Float = 200, highCutoff: Float = 2000, sampleRate: Float = 16000) {
-        self.lowCutoff = lowCutoff
-        self.highCutoff = highCutoff
+    init(sampleRate: Float = 16000) {
         self.sampleRate = sampleRate
+    }
+
+    func adapt(detectedBPM: Double) {
+        guard detectedBPM > 5 && detectedBPM < 35 else { return }
+        adaptCount += 1
+        if adaptCount < 3 { return }
+        lastBPM = detectedBPM
+        let breathFreq = Float(detectedBPM / 60.0)
+        lowCutoff = max(100, 200 - breathFreq * 20)
+        highCutoff = min(2500, 1500 + breathFreq * 50)
     }
 
     func filter(_ samples: [Float]) -> [Float] {

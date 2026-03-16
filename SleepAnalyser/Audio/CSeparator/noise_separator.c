@@ -35,6 +35,8 @@ void ns_init(ns_state_t *state, int fft_size, float sample_rate) {
     state->frame_count = 0;
     state->history_idx = 0;
     state->history_len = 0;
+    state->template_count = 0;
+    state->room_floor_loaded = 0;
 }
 
 void ns_reset(ns_state_t *state) {
@@ -376,4 +378,102 @@ ns_decomposition_t ns_decompose_multilayer(
 
     free(band_buf);
     return result;
+}
+
+void ns_load_room_noise_floor(ns_state_t *state, const float *spectrum, int bin_count) {
+    int n = bin_count < NS_TEMPLATE_BINS ? bin_count : NS_TEMPLATE_BINS;
+    memcpy(state->room_noise_floor, spectrum, sizeof(float) * n);
+    state->room_floor_loaded = 1;
+    if (!state->noise_floor_initialized) {
+        memcpy(state->noise_floor, spectrum, sizeof(float) * n);
+        state->noise_floor_initialized = 1;
+    }
+}
+
+void ns_add_noise_template(ns_state_t *state, ns_noise_type_t type,
+    const float *spectrum, int bin_count)
+{
+    if (state->template_count >= NS_MAX_TEMPLATES) return;
+    int idx = state->template_count;
+    state->templates[idx].type = type;
+    int n = bin_count < NS_TEMPLATE_BINS ? bin_count : NS_TEMPLATE_BINS;
+    memcpy(state->templates[idx].spectrum, spectrum, sizeof(float) * n);
+    state->templates[idx].valid = 1;
+    state->template_count++;
+}
+
+void ns_clear_templates(ns_state_t *state) {
+    state->template_count = 0;
+    for (int i = 0; i < NS_MAX_TEMPLATES; i++) state->templates[i].valid = 0;
+}
+
+void ns_template_enhanced_separate(
+    ns_state_t *state, const float *input, int count,
+    float *foreground_out, float *background_out)
+{
+    if (count < 4 || state->template_count == 0) {
+        ns_separate_noise(state, input, count, foreground_out, background_out);
+        return;
+    }
+
+    int fft_n = count > state->fft_size ? state->fft_size : count;
+    int half_n = fft_n / 2;
+    float *real = (float *)calloc(half_n, sizeof(float));
+    float *imag = (float *)calloc(half_n, sizeof(float));
+    if (!real || !imag) {
+        ns_separate_noise(state, input, count, foreground_out, background_out);
+        free(real); free(imag);
+        return;
+    }
+
+    simple_fft(input, real, imag, fft_n);
+
+    float *mag = (float *)calloc(half_n, sizeof(float));
+    float *noise_mask = (float *)calloc(half_n, sizeof(float));
+    if (!mag || !noise_mask) {
+        free(real); free(imag); free(mag); free(noise_mask);
+        ns_separate_noise(state, input, count, foreground_out, background_out);
+        return;
+    }
+
+    for (int i = 0; i < half_n; i++)
+        mag[i] = sqrtf(real[i] * real[i] + imag[i] * imag[i]);
+
+    for (int i = 0; i < half_n; i++) {
+        float base_floor = state->noise_floor_initialized ? state->noise_floor[i] : 0;
+        float template_max = 0;
+        for (int t = 0; t < state->template_count; t++) {
+            if (state->templates[t].valid && i < NS_TEMPLATE_BINS) {
+                float tv = state->templates[t].spectrum[i];
+                if (tv > template_max) template_max = tv;
+            }
+        }
+        noise_mask[i] = (base_floor + template_max) * 2.0f;
+    }
+
+    float *fg_real = (float *)calloc(half_n, sizeof(float));
+    float *fg_imag = (float *)calloc(half_n, sizeof(float));
+    float *bg_real = (float *)calloc(half_n, sizeof(float));
+    float *bg_imag = (float *)calloc(half_n, sizeof(float));
+
+    for (int i = 0; i < half_n; i++) {
+        float phase_cos = mag[i] > 0 ? real[i] / mag[i] : 0;
+        float phase_sin = mag[i] > 0 ? imag[i] / mag[i] : 0;
+        float fg_mag = mag[i] > noise_mask[i] ? mag[i] - noise_mask[i] : 0.005f * mag[i];
+        float bg_mag = mag[i] - fg_mag;
+        fg_real[i] = fg_mag * phase_cos;
+        fg_imag[i] = fg_mag * phase_sin;
+        bg_real[i] = bg_mag * phase_cos;
+        bg_imag[i] = bg_mag * phase_sin;
+    }
+
+    if (foreground_out) simple_ifft(fg_real, fg_imag, foreground_out, fft_n);
+    if (background_out) simple_ifft(bg_real, bg_imag, background_out, fft_n);
+    for (int i = fft_n; i < count; i++) {
+        if (foreground_out) foreground_out[i] = input[i];
+        if (background_out) background_out[i] = 0;
+    }
+
+    free(real); free(imag); free(mag); free(noise_mask);
+    free(fg_real); free(fg_imag); free(bg_real); free(bg_imag);
 }

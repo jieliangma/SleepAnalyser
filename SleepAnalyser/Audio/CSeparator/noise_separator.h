@@ -54,6 +54,15 @@ typedef struct {
     double timestamp;
 } ns_noise_segment_t;
 
+#define NS_MAX_TEMPLATES 8
+#define NS_TEMPLATE_BINS (NS_MAX_FFT_SIZE / 2)
+
+typedef struct {
+    ns_noise_type_t type;
+    float spectrum[NS_TEMPLATE_BINS];
+    int valid;
+} ns_noise_template_t;
+
 typedef struct {
     int fft_size;
     float sample_rate;
@@ -64,6 +73,10 @@ typedef struct {
     float history_rms[64];
     int history_idx;
     int history_len;
+    ns_noise_template_t templates[NS_MAX_TEMPLATES];
+    int template_count;
+    float room_noise_floor[NS_MAX_FFT_SIZE / 2];
+    int room_floor_loaded;
 } ns_state_t;
 
 void ns_init(ns_state_t *state, int fft_size, float sample_rate);
@@ -94,6 +107,17 @@ void ns_extract_band(
 
 ns_decomposition_t ns_decompose_multilayer(
     ns_state_t *state, const float *samples, int count, float sample_rate);
+
+void ns_load_room_noise_floor(ns_state_t *state, const float *spectrum, int bin_count);
+
+void ns_add_noise_template(ns_state_t *state, ns_noise_type_t type,
+    const float *spectrum, int bin_count);
+
+void ns_clear_templates(ns_state_t *state);
+
+void ns_template_enhanced_separate(
+    ns_state_t *state, const float *input, int count,
+    float *foreground_out, float *background_out);
 
 #ifdef __cplusplus
 }
