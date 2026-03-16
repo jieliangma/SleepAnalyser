@@ -1,4 +1,5 @@
 import Foundation
+import AVFoundation
 
 final class NoiseSeparatorBridge: @unchecked Sendable {
     private var state = ns_state_t()
@@ -126,6 +127,56 @@ final class NoiseSeparatorBridge: @unchecked Sendable {
             ))
         }
         return layers
+    }
+
+    static func extractFeaturesFromFile(_ url: URL) -> [String: Double] {
+        guard let file = try? AVAudioFile(forReading: url) else { return [:] }
+        let sr = Float(file.processingFormat.sampleRate)
+        let frameCount = AVAudioFrameCount(min(file.length, 16000 * 10))
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: frameCount),
+              let _ = try? file.read(into: buffer, frameCount: frameCount),
+              let channelData = buffer.floatChannelData else { return [:] }
+        let count = Int(buffer.frameLength)
+        let samples = Array(UnsafeBufferPointer(start: channelData[0], count: count))
+
+        let bridge = NoiseSeparatorBridge(fftSize: 1024, sampleRate: sr)
+        let bands = bridge.computeBandEnergy(samples: samples, sampleRate: sr)
+
+        let zcr: Double = {
+            var crossings = 0
+            for i in 1..<samples.count {
+                if (samples[i] >= 0) != (samples[i-1] >= 0) { crossings += 1 }
+            }
+            return Double(crossings) / Double(max(samples.count - 1, 1))
+        }()
+
+        let spectralCentroid: Double = {
+            let bandCenters: [(Double, Double)] = [
+                (50,   Double(bands.subBass)),
+                (165,  Double(bands.bass)),
+                (375,  Double(bands.lowMid)),
+                (1250, Double(bands.mid)),
+                (3000, Double(bands.highMid)),
+                (5000, Double(bands.presence)),
+                (7000, Double(bands.brilliance)),
+            ]
+            let totalMag = bandCenters.reduce(0.0) { $0 + $1.1 }
+            guard totalMag > 0 else { return 0 }
+            return bandCenters.reduce(0.0) { $0 + $1.0 * $1.1 } / totalMag
+        }()
+
+        return [
+            "sub_bass":  Double(bands.subBass),
+            "bass":      Double(bands.bass),
+            "low_mid":   Double(bands.lowMid),
+            "mid":       Double(bands.mid),
+            "high_mid":  Double(bands.highMid),
+            "presence":  Double(bands.presence),
+            "brilliance":Double(bands.brilliance),
+            "rms_energy":Double(bands.totalRMS),
+            "zero_crossing_rate": zcr,
+            "spectral_centroid":  spectralCentroid,
+        ]
     }
 }
 

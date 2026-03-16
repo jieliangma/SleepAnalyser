@@ -271,7 +271,6 @@ struct NoiseTrainingDetailView: View {
             seen.insert(seg.noiseType)
             return seg.noiseType
         }
-        let hasUnconfirmed = layer0.contains { !$0.isConfirmed }
 
         return HStack(spacing: 6) {
             ForEach(uniqueTypes, id: \.self) { type in
@@ -285,17 +284,6 @@ struct NoiseTrainingDetailView: View {
                 .clipShape(Capsule()).fixedSize()
             }
             Spacer()
-            if hasUnconfirmed {
-                Button { Task { await confirmAllLayer0() } } label: {
-                    Label(L10n.confirmAllNoise, systemImage: "checkmark.circle.fill")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(AppColors.success)
-                        .padding(.horizontal, 10).padding(.vertical, 4)
-                        .background(AppColors.success.opacity(0.1))
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-            }
         }
         .padding(.horizontal, AppSpacing.cardPadding).padding(.vertical, 6)
     }
@@ -373,24 +361,6 @@ struct NoiseTrainingDetailView: View {
                 }
             }
         }
-    }
-
-    private func confirmAllLayer0() async {
-        let context = appState.persistence.newBackgroundContext()
-        var updated = segs
-        for i in updated.indices where updated[i].layer == 0 && !updated[i].isConfirmed {
-            updated[i].isConfirmed = true
-            let id = updated[i].id
-            let predicate = #Predicate<SDNoiseSegment> { $0.id == id }
-            if let sd = try? context.fetch(FetchDescriptor(predicate: predicate)).first { sd.isConfirmed = true }
-            appState.mlRetrainer.addConfirmedSample(
-                noiseType: updated[i].displayType,
-                features: ["rms_energy": pow(10, updated[i].energyDB / 20)],
-                segmentId: updated[i].id
-            )
-        }
-        try? context.save()
-        await MainActor.run { segs = updated }
     }
 
     private func addManualSegment() {
@@ -663,12 +633,18 @@ struct NoiseTrainingDetailView: View {
             ))
         }
         try? context.save()
-        if track.isConfirmed {
-            appState.mlRetrainer.addConfirmedSample(
-                noiseType: track.noiseType.rawValue,
-                features: ["rms_energy": Double(pow(10.0 as Float, Float(energyDB) / 20.0))],
-                segmentId: track.id
-            )
+        guard track.isConfirmed else { return }
+        let clipURL = track.audioClipURL
+        let noiseType = track.noiseType.rawValue
+        let segId = track.id
+        Task.detached(priority: .utility) { [retrainer = appState.mlRetrainer] in
+            let features: [String: Double]
+            if let url = clipURL {
+                features = NoiseSeparatorBridge.extractFeaturesFromFile(url)
+            } else {
+                features = ["rms_energy": Double(pow(10.0 as Float, Float(energyDB) / 20.0))]
+            }
+            retrainer.addConfirmedSample(noiseType: noiseType, features: features, segmentId: segId)
         }
     }
 

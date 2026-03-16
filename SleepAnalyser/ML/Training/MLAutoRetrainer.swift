@@ -107,18 +107,27 @@ final class MLAutoRetrainer: @unchecked Sendable {
         let lines = content.components(separatedBy: "\n").filter { !$0.isEmpty }
         guard !lines.isEmpty else { return nil }
 
-        var csv = "noise_type,spectral_centroid,spectral_rolloff,spectral_flatness,zero_crossing_rate,rms_energy\n"
+        let header = "noise_type,sub_bass,bass,low_mid,mid,high_mid,presence,brilliance,rms_energy,zero_crossing_rate,spectral_centroid"
+        var csv = header + "\n"
         for line in lines {
             guard let data = line.data(using: .utf8),
                   let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let noiseType = obj["noiseType"] as? String,
                   let features = obj["features"] as? [String: Double] else { continue }
-            let centroid = features["spectral_centroid"] ?? 0
-            let rolloff = features["spectral_rolloff"] ?? 0
-            let flatness = features["spectral_flatness"] ?? 0
-            let zcr = features["zero_crossing_rate"] ?? 0
-            let rms = features["rms_energy"] ?? 0
-            csv += "\(noiseType),\(centroid),\(rolloff),\(flatness),\(zcr),\(rms)\n"
+            let row = [
+                noiseType,
+                "\(features["sub_bass"] ?? 0)",
+                "\(features["bass"] ?? 0)",
+                "\(features["low_mid"] ?? 0)",
+                "\(features["mid"] ?? 0)",
+                "\(features["high_mid"] ?? 0)",
+                "\(features["presence"] ?? 0)",
+                "\(features["brilliance"] ?? 0)",
+                "\(features["rms_energy"] ?? 0)",
+                "\(features["zero_crossing_rate"] ?? 0)",
+                "\(features["spectral_centroid"] ?? 0)",
+            ].joined(separator: ",")
+            csv += row + "\n"
         }
 
         let csvFile = storageDir.appendingPathComponent("training_data.csv")
