@@ -159,7 +159,7 @@
 "NSMicrophoneUsageDescription" = "SleepAnalyser needs microphone access to analyze your breathing patterns during sleep.";
 
 "nav.recordings" = "Recordings";
-"nav.noiseAnalysis" = "Noise Analysis";
+"nav.noiseAnalysis" = "Noise Training";
 "nav.rooms" = "Rooms";
 "recordings.none" = "No recordings yet. Start a sleep session to begin recording.";
 "event.edit" = "Edit Event";

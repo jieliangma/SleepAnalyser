@@ -159,7 +159,7 @@
 "NSMicrophoneUsageDescription" = "睡眠分析需要使用麥克風來分析你睡眠期間的呼吸模式。";
 
 "nav.recordings" = "錄音";
-"nav.noiseAnalysis" = "噪聲分析";
+"nav.noiseAnalysis" = "噪聲訓練";
 "nav.rooms" = "房間";
 "recordings.none" = "暫無錄音。開始睡眠追蹤後將自動錄製。";
 "event.edit" = "編輯事件";
