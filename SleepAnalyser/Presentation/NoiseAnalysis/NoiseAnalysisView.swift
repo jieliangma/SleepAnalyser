@@ -24,6 +24,10 @@ struct NoiseAnalysisView: View {
     @State private var isDragging: [UUID: Bool] = [:]
     @State private var cursorMonitor: Any?
 
+    private static let zoomKey    = "noiseTraining.zoomScales"
+    private static let panKey     = "noiseTraining.panAccumulated"
+    private static let toolKey    = "noiseTraining.toolMode"
+
     enum WaveformTool { case select, pan }
     @State private var manualSelectStart: CGFloat?
     @State private var manualSelectEnd: CGFloat?
@@ -49,6 +53,7 @@ struct NoiseAnalysisView: View {
         .task {
             captures = appState.noiseCaptureRecorder.allCaptures()
             await loadAllSegments()
+            loadPersistedUIState()
             commandMonitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged]) { event in
                 let cmd = event.modifierFlags.contains(.command)
                 if cmd != commandKeyDown {
@@ -224,6 +229,7 @@ struct NoiseAnalysisView: View {
                 HStack(spacing: 0) {
                     Button {
                         toolMode[cap.id] = .select
+                        saveUIState()
                     } label: {
                         Image(systemName: "text.cursor")
                             .font(.system(size: 11))
@@ -235,6 +241,7 @@ struct NoiseAnalysisView: View {
                     .buttonStyle(.plain)
                     Button {
                         toolMode[cap.id] = .pan
+                        saveUIState()
                     } label: {
                         Image(systemName: "hand.draw")
                             .font(.system(size: 11))
@@ -383,6 +390,7 @@ struct NoiseAnalysisView: View {
                         if toolMode[capture.id] == .pan {
                             isDragging[capture.id] = false
                             NSCursor.pop()
+                            saveUIState()
                         } else if manualSelectStart != nil {
                             showManualTypePicker = true
                         }
@@ -400,6 +408,7 @@ struct NoiseAnalysisView: View {
             }
             .gesture(MagnificationGesture().onChanged { val in
                 zoomScales[capture.id] = max(1.0, min(10.0, val))
+                saveUIState()
             })
             .onScrollWheelZoom { delta in
                 let current = zoomScales[capture.id] ?? 1.0
@@ -408,6 +417,7 @@ struct NoiseAnalysisView: View {
                 let newMaxOffset = max(0, baseW * newZoom - baseW)
                 let currentPan = panAccumulated[capture.id] ?? 0
                 panAccumulated[capture.id] = max(-newMaxOffset, min(0, currentPan))
+                saveUIState()
             }
         }
         .frame(height: 100)
@@ -502,7 +512,8 @@ struct NoiseAnalysisView: View {
             }
             appState.mlRetrainer.addConfirmedSample(
                 noiseType: segs[i].displayType,
-                features: ["rms_energy": pow(10, segs[i].energyDB / 20)]
+                features: ["rms_energy": pow(10, segs[i].energyDB / 20)],
+                segmentId: segs[i].id
             )
         }
         try? context.save()
@@ -652,6 +663,35 @@ struct NoiseAnalysisView: View {
     }
 
     // MARK: - Helpers
+
+    private func saveUIState() {
+        let ud = UserDefaults.standard
+        ud.set(Dictionary(uniqueKeysWithValues: zoomScales.map { ($0.key.uuidString, Double($0.value)) }),
+               forKey: Self.zoomKey)
+        ud.set(Dictionary(uniqueKeysWithValues: panAccumulated.map { ($0.key.uuidString, Double($0.value)) }),
+               forKey: Self.panKey)
+        ud.set(Dictionary(uniqueKeysWithValues: toolMode.map { ($0.key.uuidString, $0.value == .pan ? "pan" : "select") }),
+               forKey: Self.toolKey)
+    }
+
+    private func loadPersistedUIState() {
+        let ud = UserDefaults.standard
+        if let saved = ud.dictionary(forKey: Self.zoomKey) as? [String: Double] {
+            zoomScales = Dictionary(uniqueKeysWithValues: saved.compactMap { k, v in
+                UUID(uuidString: k).map { ($0, CGFloat(v)) }
+            })
+        }
+        if let saved = ud.dictionary(forKey: Self.panKey) as? [String: Double] {
+            panAccumulated = Dictionary(uniqueKeysWithValues: saved.compactMap { k, v in
+                UUID(uuidString: k).map { ($0, CGFloat(v)) }
+            })
+        }
+        if let saved = ud.dictionary(forKey: Self.toolKey) as? [String: String] {
+            toolMode = Dictionary(uniqueKeysWithValues: saved.compactMap { k, v in
+                UUID(uuidString: k).map { ($0, v == "pan" ? WaveformTool.pan : WaveformTool.select) }
+            })
+        }
+    }
 
     private func updateCursorForCurrentState() {
         guard let waveformId = hoveredWaveformId else {
@@ -811,7 +851,8 @@ struct NoiseAnalysisView: View {
         if seg.isConfirmed {
             appState.mlRetrainer.addConfirmedSample(
                 noiseType: seg.displayType,
-                features: ["rms_energy": pow(10, seg.energyDB / 20)]
+                features: ["rms_energy": pow(10, seg.energyDB / 20)],
+                segmentId: seg.id
             )
         }
     }
