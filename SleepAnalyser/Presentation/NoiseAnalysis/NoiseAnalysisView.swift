@@ -301,7 +301,7 @@ struct NoiseAnalysisView: View {
             let clampedOffset = min(max(0, -panOffset), maxOffset)
 
             Canvas { context, size in
-                let w = size.width, h = size.height, midY = h / 2
+                let h = size.height, midY = h / 2
                 guard !amps.isEmpty else { return }
 
                 let maxAmp = amps.max() ?? 1

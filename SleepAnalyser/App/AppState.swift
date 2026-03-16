@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import AVFoundation
+import SwiftData
 
 @Observable
 final class AppState {
