@@ -26,6 +26,7 @@ struct NoiseTrainingDetailView: View {
     @State private var cursorMonitor: Any?
     @State private var selectedTrackIds: Set<UUID> = []
     @State private var isMixing = false
+    @State private var separationTask: Task<Void, Never>?
 
     enum WaveformTool { case select, pan }
 
@@ -74,6 +75,8 @@ struct NoiseTrainingDetailView: View {
             }
         }
         .onDisappear {
+            separationTask?.cancel()
+            separationTask = nil
             if let m = cursorMonitor { NSEvent.removeMonitor(m); cursorMonitor = nil }
             NSCursor.arrow.set()
         }
@@ -109,7 +112,11 @@ struct NoiseTrainingDetailView: View {
                 Spacer()
                 noiseSummaryBadges(segs)
 
-                Button { Task { await MainActor.run { isAnalyzing = true }; await analyzeSourceTracks() } } label: {
+                Button {
+                    separationTask?.cancel()
+                    isAnalyzing = true
+                    separationTask = Task { await analyzeSourceTracks() }
+                } label: {
                     Image(systemName: isAnalyzing ? "waveform" : "waveform.badge.plus")
                         .font(.system(size: 12)).foregroundStyle(isAnalyzing ? AppColors.textTertiary : AppColors.primary)
                 }
@@ -385,154 +392,180 @@ struct NoiseTrainingDetailView: View {
     }
 
     private func analyzeSourceTracks() async {
-        guard let audioURL = appState.noiseCaptureRecorder.audioURL(for: capture.directoryURL),
-              let audioFile = try? AVAudioFile(forReading: audioURL) else { return }
-        await MainActor.run { isAnalyzing = true }
-
-        let sr = audioFile.processingFormat.sampleRate
-        let frameSize: AVAudioFrameCount = 2048
-        let buffer = AVAudioPCMBuffer(pcmFormat: audioFile.processingFormat, frameCapacity: frameSize)!
-        let separator = NoiseSeparatorBridge(fftSize: 1024, sampleRate: Float(sr))
-        let totalDur = resolvedDuration > 0 ? resolvedDuration : max(1, Double(amps.count) / 15.0)
-        let ampBinCount = max(64, amps.count)
-
-        var layerVotes: [NoiseTypeLabel: (totalEnergy: Float, frames: Int, peakBins: [Int: Float])] = [:]
-        var warmupFrames = 0
-        let warmupNeeded = 10
-
-        while audioFile.framePosition < audioFile.length {
-            do { try audioFile.read(into: buffer, frameCount: frameSize) } catch { break }
-            guard let channelData = buffer.floatChannelData else { break }
-            let samples = Array(UnsafeBufferPointer(start: channelData[0], count: Int(buffer.frameLength)))
-            separator.updateNoiseFloor(samples: samples)
-            warmupFrames += 1
-            guard warmupFrames > warmupNeeded else { continue }
-
-            let layers = separator.decomposeMultiLayer(samples: samples)
-            guard layers.count > 0 else { continue }
-
-            let elapsed = Double(audioFile.framePosition) / sr
-            let binIdx = min(Int(elapsed / totalDur * Double(ampBinCount)), ampBinCount - 1)
-
-            for layer in layers where layer.energy > 0.001 {
-                if var entry = layerVotes[layer.type] {
-                    entry.totalEnergy += layer.energy
-                    entry.frames += 1
-                    let prev = entry.peakBins[binIdx] ?? 0
-                    entry.peakBins[binIdx] = max(prev, layer.energy)
-                    layerVotes[layer.type] = entry
-                } else {
-                    layerVotes[layer.type] = (layer.energy, 1, [binIdx: layer.energy])
-                }
-            }
+        guard !Task.isCancelled else { return }
+        guard let audioURL = appState.noiseCaptureRecorder.audioURL(for: capture.directoryURL) else {
+            await MainActor.run { isAnalyzing = false }
+            return
         }
 
-        var tracks: [SourceTrack] = []
-        let bgContext = appState.persistence.newBackgroundContext()
+        let captureDir = capture.directoryURL
         let captureId = capture.id
         let capDate = capture.date
         let capDur = resolvedDuration > 0 ? resolvedDuration : 1.0
+        let ampBinCount = max(64, amps.count)
+        let totalDur = capDur
+        let localAmps = amps
+        let retrainer = appState.mlRetrainer
+        let persistence = appState.persistence
 
-        for (noiseType, info) in layerVotes.sorted(by: { $0.value.totalEnergy > $1.value.totalEnergy })
-            where info.frames >= 2 {
-            var trackAmps = [Float](repeating: 0, count: ampBinCount)
-            for (bin, energy) in info.peakBins { trackAmps[bin] = energy }
-            let maxE = trackAmps.max() ?? 1
-            if maxE > 0 { trackAmps = trackAmps.map { $0 / maxE } }
-            let avgConf: Float = min(info.totalEnergy / Float(info.frames) * 5, 0.95)
-            let avgEnergy = info.totalEnergy / Float(max(info.frames, 1))
-            let energyDB = avgEnergy > 0 ? Double(20 * log10(avgEnergy)) : -60.0
-            let layerIdx = tracks.count + 1
+        let result = await Task.detached(priority: .userInitiated) { () -> [SourceTrack]? in
+            guard !Task.isCancelled else { return nil }
+            guard let audioFile = try? AVAudioFile(forReading: audioURL) else { return nil }
 
-            let existingPred = #Predicate<SDNoiseSegment> {
-                $0.sessionId == captureId && $0.layer == layerIdx
-            }
-            let existingSD = try? bgContext.fetch(FetchDescriptor<SDNoiseSegment>(predicate: existingPred)).first
-            let segId: UUID
-            if let sd = existingSD {
-                segId = sd.id
-                sd.noiseType = noiseType.rawValue
-                sd.confidence = Double(avgConf)
-                sd.energyDB = energyDB
-            } else {
-                segId = UUID()
-                bgContext.insert(SDNoiseSegment(
-                    id: segId, sessionId: captureId,
-                    timestamp: capDate, endTime: capDate.addingTimeInterval(capDur),
-                    noiseType: noiseType.rawValue, confidence: Double(avgConf),
-                    energyDB: energyDB, layer: layerIdx
-                ))
-            }
-            let existingClipPath = existingSD?.audioClipPath
-            let sourceClipURL = capture.directoryURL.appendingPathComponent("source_\(layerIdx).m4a")
-            let clipURL: URL?
-            if FileManager.default.fileExists(atPath: sourceClipURL.path) {
-                clipURL = sourceClipURL
-            } else if let existingPath = existingClipPath, FileManager.default.fileExists(atPath: existingPath) {
-                clipURL = URL(fileURLWithPath: existingPath)
-            } else {
-                clipURL = await extractBandAudio(
-                    for: noiseType, layerIdx: layerIdx,
-                    sourceURL: audioURL, outputURL: sourceClipURL,
-                    sampleRate: Float(sr)
-                )
-            }
-            if let clipURL {
-                let clipPred = #Predicate<SDNoiseSegment> { $0.id == segId }
-                if let sd = try? bgContext.fetch(FetchDescriptor<SDNoiseSegment>(predicate: clipPred)).first {
-                    sd.audioClipPath = clipURL.path
+            let sr = audioFile.processingFormat.sampleRate
+            let frameSize: AVAudioFrameCount = 2048
+            let buffer = AVAudioPCMBuffer(pcmFormat: audioFile.processingFormat, frameCapacity: frameSize)!
+            let separator = NoiseSeparatorBridge(fftSize: 1024, sampleRate: Float(sr))
+            var layerVotes: [NoiseTypeLabel: (totalEnergy: Float, frames: Int, peakBins: [Int: Float])] = [:]
+            var warmupFrames = 0
+            let warmupNeeded = 10
+
+            while audioFile.framePosition < audioFile.length {
+                guard !Task.isCancelled else { return nil }
+                do { try audioFile.read(into: buffer, frameCount: frameSize) } catch { break }
+                guard let channelData = buffer.floatChannelData else { break }
+                let samples = Array(UnsafeBufferPointer(start: channelData[0], count: Int(buffer.frameLength)))
+                separator.updateNoiseFloor(samples: samples)
+                warmupFrames += 1
+                guard warmupFrames > warmupNeeded else { continue }
+
+                let layers = separator.decomposeMultiLayer(samples: samples)
+                guard layers.count > 0 else { continue }
+
+                let elapsed = Double(audioFile.framePosition) / sr
+                let binIdx = min(Int(elapsed / totalDur * Double(ampBinCount)), ampBinCount - 1)
+
+                for layer in layers where layer.energy > 0.001 {
+                    if var entry = layerVotes[layer.type] {
+                        entry.totalEnergy += layer.energy
+                        entry.frames += 1
+                        let prev = entry.peakBins[binIdx] ?? 0
+                        entry.peakBins[binIdx] = max(prev, layer.energy)
+                        layerVotes[layer.type] = entry
+                    } else {
+                        layerVotes[layer.type] = (layer.energy, 1, [binIdx: layer.energy])
+                    }
                 }
             }
-            tracks.append(SourceTrack(
-                id: segId, layer: layerIdx, noiseType: noiseType,
-                confidence: avgConf, energy: avgEnergy,
-                amps: trackAmps, isConfirmed: existingSD?.isConfirmed ?? false,
-                userLabel: existingSD?.userLabel, audioClipURL: clipURL
-            ))
-        }
-        try? bgContext.save()
+
+            guard !Task.isCancelled else { return nil }
+
+            var tracks: [SourceTrack] = []
+            let bgContext = persistence.newBackgroundContext()
+
+            for (noiseType, info) in layerVotes.sorted(by: { $0.value.totalEnergy > $1.value.totalEnergy })
+                where info.frames >= 2 {
+                guard !Task.isCancelled else { return nil }
+
+                var trackAmps = [Float](repeating: 0, count: ampBinCount)
+                for (bin, energy) in info.peakBins { trackAmps[bin] = energy }
+                let maxE = trackAmps.max() ?? 1
+                if maxE > 0 { trackAmps = trackAmps.map { $0 / maxE } }
+                let avgConf: Float = min(info.totalEnergy / Float(info.frames) * 5, 0.95)
+                let avgEnergy = info.totalEnergy / Float(max(info.frames, 1))
+                let energyDB = avgEnergy > 0 ? Double(20 * log10(avgEnergy)) : -60.0
+                let layerIdx = tracks.count + 1
+
+                let existingPred = #Predicate<SDNoiseSegment> {
+                    $0.sessionId == captureId && $0.layer == layerIdx
+                }
+                let existingSD = try? bgContext.fetch(FetchDescriptor<SDNoiseSegment>(predicate: existingPred)).first
+                let segId: UUID
+                if let sd = existingSD {
+                    segId = sd.id
+                    sd.noiseType = noiseType.rawValue
+                    sd.confidence = Double(avgConf)
+                    sd.energyDB = energyDB
+                } else {
+                    segId = UUID()
+                    bgContext.insert(SDNoiseSegment(
+                        id: segId, sessionId: captureId,
+                        timestamp: capDate, endTime: capDate.addingTimeInterval(capDur),
+                        noiseType: noiseType.rawValue, confidence: Double(avgConf),
+                        energyDB: energyDB, layer: layerIdx
+                    ))
+                }
+
+                let sourceClipURL = captureDir.appendingPathComponent("source_\(layerIdx).caf")
+                let existingClipPath = existingSD?.audioClipPath
+                let clipURL: URL?
+                if FileManager.default.fileExists(atPath: sourceClipURL.path) {
+                    clipURL = sourceClipURL
+                } else if let p = existingClipPath, FileManager.default.fileExists(atPath: p) {
+                    clipURL = URL(fileURLWithPath: p)
+                } else if !Task.isCancelled {
+                    let pcmSettings: [String: Any] = [
+                        AVFormatIDKey: kAudioFormatLinearPCM,
+                        AVSampleRateKey: sr,
+                        AVNumberOfChannelsKey: 1,
+                        AVLinearPCMBitDepthKey: 32,
+                        AVLinearPCMIsFloatKey: true,
+                        AVLinearPCMIsBigEndianKey: false,
+                    ]
+                    clipURL = Self.writeBandAudio(
+                        sourceURL: audioURL, outputURL: sourceClipURL,
+                        noiseType: noiseType, sampleRate: Float(sr),
+                        pcmSettings: pcmSettings
+                    )
+                } else {
+                    return nil
+                }
+
+                if let clipURL {
+                    let clipPred = #Predicate<SDNoiseSegment> { $0.id == segId }
+                    if let sd = try? bgContext.fetch(FetchDescriptor<SDNoiseSegment>(predicate: clipPred)).first {
+                        sd.audioClipPath = clipURL.path
+                    }
+                }
+
+                tracks.append(SourceTrack(
+                    id: segId, layer: layerIdx, noiseType: noiseType,
+                    confidence: avgConf, energy: avgEnergy,
+                    amps: trackAmps, isConfirmed: existingSD?.isConfirmed ?? false,
+                    userLabel: existingSD?.userLabel, audioClipURL: clipURL
+                ))
+            }
+
+            try? bgContext.save()
+            return tracks
+        }.value
 
         await MainActor.run {
-            sourceTracks = tracks
+            if let tracks = result {
+                sourceTracks = tracks
+            }
             isAnalyzing = false
         }
     }
 
-    private func extractBandAudio(
-        for noiseType: NoiseTypeLabel,
-        layerIdx: Int,
-        sourceURL: URL,
-        outputURL: URL,
-        sampleRate: Float
-    ) async -> URL? {
-        return await Task.detached(priority: .userInitiated) {
-            guard let sourceFile = try? AVAudioFile(forReading: sourceURL) else { return nil }
-            let format = sourceFile.processingFormat
-            let frameCount = AVAudioFrameCount(sourceFile.length)
-            guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount),
-                  let _ = try? sourceFile.read(into: buffer, frameCount: frameCount),
-                  let channelData = buffer.floatChannelData else { return nil }
-
-            let separator = NoiseSeparatorBridge(fftSize: 1024, sampleRate: sampleRate)
-            let (lo, hi) = noiseType.bandHz
-            let count = Int(buffer.frameLength)
-            let filtered = separator.extractBand(input: Array(UnsafeBufferPointer(start: channelData[0], count: count)),
-                                                  lowHz: lo, highHz: hi, sampleRate: sampleRate)
-
-            guard let outFile = try? AVAudioFile(forWriting: outputURL, settings: format.settings) else { return nil }
-            guard let outBuffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(count)) else { return nil }
-            outBuffer.frameLength = AVAudioFrameCount(count)
-            if let outData = outBuffer.floatChannelData {
-                filtered.withUnsafeBufferPointer { src in
-                    outData[0].update(from: src.baseAddress!, count: count)
-                }
-                if format.channelCount > 1 {
-                    outData[1].update(from: (outBuffer.floatChannelData?[0])!, count: count)
-                }
+    private static func writeBandAudio(
+        sourceURL: URL, outputURL: URL,
+        noiseType: NoiseTypeLabel, sampleRate: Float,
+        pcmSettings: [String: Any]
+    ) -> URL? {
+        guard let sourceFile = try? AVAudioFile(forReading: sourceURL) else { return nil }
+        let frameCount = AVAudioFrameCount(sourceFile.length)
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: sourceFile.processingFormat, frameCapacity: frameCount),
+              let _ = try? sourceFile.read(into: buffer, frameCount: frameCount),
+              let channelData = buffer.floatChannelData else { return nil }
+        let separator = NoiseSeparatorBridge(fftSize: 1024, sampleRate: sampleRate)
+        let (lo, hi) = noiseType.bandHz
+        let count = Int(buffer.frameLength)
+        let filtered = separator.extractBand(
+            input: Array(UnsafeBufferPointer(start: channelData[0], count: count)),
+            lowHz: lo, highHz: hi, sampleRate: sampleRate
+        )
+        guard let outFile = try? AVAudioFile(forWriting: outputURL, settings: pcmSettings),
+              let pcmFormat = AVAudioFormat(settings: pcmSettings),
+              let outBuffer = AVAudioPCMBuffer(pcmFormat: pcmFormat, frameCapacity: AVAudioFrameCount(count)) else { return nil }
+        outBuffer.frameLength = AVAudioFrameCount(count)
+        if let outData = outBuffer.floatChannelData {
+            filtered.withUnsafeBufferPointer { src in
+                outData[0].update(from: src.baseAddress!, count: count)
             }
-            guard let _ = try? outFile.write(from: outBuffer) else { return nil }
-            return outputURL
-        }.value
+        }
+        guard let _ = try? outFile.write(from: outBuffer) else { return nil }
+        return outputURL
     }
 
     private func reanalyze() async {
@@ -585,8 +618,12 @@ struct NoiseTrainingDetailView: View {
                                             confidence: seg.confidence, energyDB: seg.energyDB, layer: 0))
         }
         try? bgContext.save()
-        await MainActor.run { segs = mergedSegs }
-        await analyzeSourceTracks()
+        await MainActor.run {
+            segs = mergedSegs
+            separationTask?.cancel()
+            isAnalyzing = true
+            separationTask = Task { await analyzeSourceTracks() }
+        }
     }
 
     private func mergeSegments(_ segs: [NoiseSegment], gapTolerance: TimeInterval) -> [NoiseSegment] {
@@ -877,17 +914,10 @@ private struct SourceTrackView: View {
                 .pickerStyle(.menu).labelsHidden()
                 .frame(width: 110)
                 .font(.system(size: 11))
-
-                Button {
-                    track.noiseType = NoiseTypeLabel(rawValue: selectedType) ?? track.noiseType
-                    track.isConfirmed = true
+                .onChange(of: selectedType) { _, newVal in
+                    track.noiseType = NoiseTypeLabel(rawValue: newVal) ?? track.noiseType
                     onConfirm(track)
-                } label: {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(track.isConfirmed ? AppColors.success : AppColors.textTertiary)
                 }
-                .buttonStyle(.plain)
             }
             .padding(.horizontal, AppSpacing.cardPadding).padding(.vertical, AppSpacing.sm)
 
