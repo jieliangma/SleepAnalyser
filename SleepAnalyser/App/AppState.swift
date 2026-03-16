@@ -23,7 +23,6 @@ final class AppState {
     let audioPlayer: AudioPlayerService
     let roomRepo: RoomRepository
     let noiseCaptureRecorder: NoiseCaptureRecorder
-    let mlRetrainer: MLAutoRetrainer
     let noiseTypeManager: NoiseTypeManager
 
     var activeSession: SleepSession?
@@ -62,7 +61,6 @@ final class AppState {
         self.audioPlayer = AudioPlayerService()
         self.roomRepo = RoomRepository(persistence: persistence)
         self.noiseCaptureRecorder = NoiseCaptureRecorder()
-        self.mlRetrainer = MLAutoRetrainer()
         self.noiseTypeManager = NoiseTypeManager()
 
         Task { await loadActiveProfile() }
@@ -256,7 +254,6 @@ final class AppState {
 
         recordingManager.deleteAllRecordings()
         noiseCaptureRecorder.deleteAllCaptures()
-        mlRetrainer.deleteAllFeedback()
 
         await MainActor.run {
             activeSession = nil

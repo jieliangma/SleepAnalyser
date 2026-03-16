@@ -194,8 +194,20 @@ final class AudioPipelineCoordinator: @unchecked Sendable {
             epochBuffer = Array(epochBuffer.dropFirst(epochSamples))
 
             let breathData = breathFilter.filter(epochData)
-            let features = featureExtractor.extractFeatures(from: processedForFeatures)
+            let rawFeatures = featureExtractor.extractFeatures(from: processedForFeatures)
             let breathing = breathingEstimator.estimate(from: breathData)
+
+            let features = FeatureVector(
+                timestamp: rawFeatures.timestamp,
+                mfccCoefficients: rawFeatures.mfccCoefficients,
+                spectralCentroid: rawFeatures.spectralCentroid,
+                spectralRolloff: rawFeatures.spectralRolloff,
+                spectralFlatness: rawFeatures.spectralFlatness,
+                zeroCrossingRate: rawFeatures.zeroCrossingRate,
+                rmsEnergy: rawFeatures.rmsEnergy,
+                breathingPeriodicity: breathing.isValid ? Float(breathing.breathsPerMinute) : 0,
+                breathIntervalVariability: breathing.isValid ? Float(1.0 - breathing.regularity) : 0
+            )
 
             if breathing.isValid {
                 breathFilter.adapt(detectedBPM: breathing.breathsPerMinute)

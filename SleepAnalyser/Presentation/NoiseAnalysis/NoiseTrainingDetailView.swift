@@ -404,8 +404,6 @@ struct NoiseTrainingDetailView: View {
         let capDur = resolvedDuration > 0 ? resolvedDuration : 1.0
         let ampBinCount = max(64, amps.count)
         let totalDur = capDur
-        let localAmps = amps
-        let retrainer = appState.mlRetrainer
         let persistence = appState.persistence
 
         let result = await Task.detached(priority: .userInitiated) { () -> [SourceTrack]? in
@@ -687,24 +685,6 @@ struct NoiseTrainingDetailView: View {
             ))
         }
         try? context.save()
-        let clipURL = track.audioClipURL
-        let noiseType = track.noiseType.rawValue
-        let segId = track.id
-        if track.isConfirmed {
-            Task.detached(priority: .utility) { [retrainer = appState.mlRetrainer] in
-                let features: [String: Double]
-                if let url = clipURL {
-                    features = NoiseSeparatorBridge.extractFeaturesFromFile(url)
-                } else {
-                    features = ["rms_energy": Double(pow(10.0 as Float, Float(energyDB) / 20.0))]
-                }
-                retrainer.addConfirmedSample(noiseType: noiseType, features: features, segmentId: segId)
-            }
-        } else {
-            Task.detached(priority: .utility) { [retrainer = appState.mlRetrainer] in
-                retrainer.removeConfirmedSample(segmentId: segId)
-            }
-        }
     }
 
     private func toggleTrackSelection(_ id: UUID) {
@@ -850,13 +830,6 @@ struct NoiseTrainingDetailView: View {
             existing.isConfirmed = seg.isConfirmed
             existing.userLabel = seg.userLabel
             try? context.save()
-        }
-        if seg.isConfirmed {
-            appState.mlRetrainer.addConfirmedSample(
-                noiseType: seg.displayType,
-                features: ["rms_energy": Double(pow(10.0 as Float, Float(seg.energyDB) / 20.0))],
-                segmentId: seg.id
-            )
         }
     }
 
