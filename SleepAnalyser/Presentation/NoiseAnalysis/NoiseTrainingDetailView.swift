@@ -546,28 +546,40 @@ struct NoiseTrainingDetailView: View {
         noiseType: NoiseTypeLabel, sampleRate: Float,
         pcmSettings: [String: Any]
     ) -> URL? {
-        guard let sourceFile = try? AVAudioFile(forReading: sourceURL),
-              let pcmFormat = AVAudioFormat(settings: pcmSettings),
-              let outFile = try? AVAudioFile(forWriting: outputURL, settings: pcmSettings) else { return nil }
+        guard let sourceFile = try? AVAudioFile(forReading: sourceURL) else { return nil }
 
+        let format = sourceFile.processingFormat
+        let actualSR = Float(format.sampleRate)
         let (lo, hi) = noiseType.bandHz
         let chunkSize = 2048
-        let readFormat = sourceFile.processingFormat
-        guard let readBuffer = AVAudioPCMBuffer(pcmFormat: readFormat,
-                                                frameCapacity: AVAudioFrameCount(chunkSize)) else { return nil }
-        guard let writeBuffer = AVAudioPCMBuffer(pcmFormat: pcmFormat,
+
+        let outSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: format.sampleRate,
+            AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 32,
+            AVLinearPCMIsFloatKey: true,
+            AVLinearPCMIsBigEndianKey: false,
+        ]
+        guard let outFormat = AVAudioFormat(settings: outSettings),
+              let outFile = try? AVAudioFile(forWriting: outputURL, settings: outSettings) else { return nil }
+
+        guard let readBuffer = AVAudioPCMBuffer(pcmFormat: format,
+                                                frameCapacity: AVAudioFrameCount(chunkSize)),
+              let writeBuffer = AVAudioPCMBuffer(pcmFormat: outFormat,
                                                  frameCapacity: AVAudioFrameCount(chunkSize)) else { return nil }
-        let separator = NoiseSeparatorBridge(fftSize: 1024, sampleRate: sampleRate)
+
+        let separator = NoiseSeparatorBridge(fftSize: 1024, sampleRate: actualSR)
 
         while sourceFile.framePosition < sourceFile.length {
             guard let _ = try? sourceFile.read(into: readBuffer,
                                                frameCount: AVAudioFrameCount(chunkSize)) else { break }
-            guard let channelData = readBuffer.floatChannelData else { break }
             let frameLen = Int(readBuffer.frameLength)
             guard frameLen > 0 else { break }
+            guard let inData = readBuffer.floatChannelData else { break }
 
-            let samples = Array(UnsafeBufferPointer(start: channelData[0], count: frameLen))
-            let filtered = separator.extractBand(input: samples, lowHz: lo, highHz: hi, sampleRate: sampleRate)
+            let samples = Array(UnsafeBufferPointer(start: inData[0], count: frameLen))
+            let filtered = separator.extractBand(input: samples, lowHz: lo, highHz: hi, sampleRate: actualSR)
 
             writeBuffer.frameLength = AVAudioFrameCount(frameLen)
             if let outData = writeBuffer.floatChannelData {
