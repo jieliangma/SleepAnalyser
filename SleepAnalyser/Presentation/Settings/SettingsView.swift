@@ -435,11 +435,11 @@ private struct AudioFilterTestSection: View {
                         Text(L10n.recording)
                             .font(AppTypography.caption).foregroundStyle(AppColors.error)
                         Spacer()
-                        Text(bypass ? L10n.audioFilterBypass : L10n.audioFilterProcessed)
+                        Text(bypass ? L10n.audioFilterProcessed : L10n.audioFilterBypass)
                             .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(bypass ? AppColors.warning : AppColors.success)
+                            .foregroundStyle(bypass ? AppColors.success : AppColors.warning)
                             .padding(.horizontal, 8).padding(.vertical, 3)
-                            .background((bypass ? AppColors.warning : AppColors.success).opacity(0.1))
+                            .background((bypass ? AppColors.success : AppColors.warning).opacity(0.1))
                             .clipShape(Capsule())
                     }
                 }
@@ -503,7 +503,6 @@ final class AudioFilterLoopback {
     private let preprocessor = AudioPreprocessor()
     private let suppressor = NoiseSuppressor()
     private let separator = NoiseSeparatorBridge()
-    private let breathFilter = AdaptiveBreathFilter()
     private let targetSampleRate: Double = 16000.0
     var bypass = false
     var onLevels: ((Float, Float) -> Void)?
@@ -560,18 +559,14 @@ final class AudioFilterLoopback {
             let inputRMS = self.computeRMS(resampled)
             let processed: [Float]
             if self.bypass {
-                processed = resampled
-            } else {
                 let frame = AudioFrame(
                     timestamp: Date(), samples: resampled,
                     sampleRate: self.targetSampleRate, channelCount: 1
                 )
                 let preResult = self.preprocessor.process(frame: frame)
-                let suppressed = self.suppressor.suppress(preResult.samples)
-                self.separator.updateNoiseFloor(samples: suppressed)
-                let separation = self.separator.templateEnhancedSeparate(input: suppressed)
-                let foreground = separation.foreground
-                processed = self.breathFilter.filter(foreground)
+                processed = self.suppressor.suppress(preResult.samples)
+            } else {
+                processed = resampled
             }
             let outputRMS = self.computeRMS(processed)
             self.onLevels?(inputRMS, outputRMS)
