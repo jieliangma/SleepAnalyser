@@ -129,6 +129,7 @@ private struct StorageSection: View {
     @State private var maxDays: Double = Double(StorageSettings.maxRetentionDays)
     @State private var currentUsageBytes: Int64 = 0
     @State private var recordingCount: Int = 0
+    @State private var showDeleteConfirm = false
 
     var body: some View {
         SettingsCard(title: L10n.storageManagement, icon: "internaldrive.fill") {
@@ -163,9 +164,29 @@ private struct StorageSection: View {
 
                 Text(L10n.storageNote)
                     .font(AppTypography.caption).foregroundStyle(AppColors.textTertiary)
+
+                Divider().foregroundStyle(AppColors.surfaceLight)
+
+                Button(role: .destructive) {
+                    showDeleteConfirm = true
+                } label: {
+                    Label(L10n.deleteAllData, systemImage: "trash")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(AppColors.error)
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(AppColors.error.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
             }
         }
         .onAppear { refreshUsage() }
+        .alert(L10n.deleteAllData, isPresented: $showDeleteConfirm) {
+            Button(L10n.deleteAllData, role: .destructive) {
+                Task { await appState.deleteAllData() }
+            }
+            Button(L10n.cancel, role: .cancel) {}
+        }
     }
 
     private var usageRow: some View {
@@ -309,39 +330,13 @@ private struct AudioSection: View {
 }
 
 private struct PrivacySection: View {
-    @Environment(AppState.self) private var appState
-    @State private var showDeleteConfirm = false
-
     var body: some View {
         SettingsCard(title: L10n.data, icon: "lock.shield.fill") {
-            VStack(alignment: .leading, spacing: AppSpacing.md) {
-                HStack(spacing: AppSpacing.sm) {
-                    Image(systemName: "checkmark.shield.fill").foregroundStyle(AppColors.success)
-                    Text(L10n.privacyNote)
-                        .font(AppTypography.body).foregroundStyle(AppColors.textSecondary)
-                }
-
-                Button(role: .destructive) {
-                    showDeleteConfirm = true
-                } label: {
-                    Label(L10n.deleteAllData, systemImage: "trash")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(AppColors.error)
-                        .padding(.horizontal, 14).padding(.vertical, 8)
-                        .background(AppColors.error.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-                .buttonStyle(.plain)
+            HStack(spacing: AppSpacing.sm) {
+                Image(systemName: "checkmark.shield.fill").foregroundStyle(AppColors.success)
+                Text(L10n.privacyNote)
+                    .font(AppTypography.body).foregroundStyle(AppColors.textSecondary)
             }
-        }
-        .alert(L10n.deleteAllData, isPresented: $showDeleteConfirm) {
-            Button(L10n.deleteAllData, role: .destructive) {
-                Task {
-                    let sessions = (try? await appState.sessionRepo.getSessions(from: Date.distantPast, to: Date.distantFuture)) ?? []
-                    for s in sessions { try? await appState.sessionRepo.deleteSession(id: s.id) }
-                }
-            }
-            Button(L10n.cancel, role: .cancel) {}
         }
     }
 }
