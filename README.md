@@ -155,7 +155,7 @@ SleepAnalyser/
 ├── Utilities/                  # L10n、常量、Date/Array 扩展
 └── Platform/                   # 权限、日志、后台生命周期
 
-SleepAnalyserTests/             # 61 个单元测试
+SleepAnalyserTests/             # 单元测试
 ├── AudioTests/                 # 预处理、频谱提取、环形缓冲区
 ├── DomainTests/                # 模型、评分、用例
 ├── MLTests/                    # 推理引擎、HMM、置信度平滑
@@ -180,20 +180,6 @@ MLTraining/                     # Python 模型训练脚本
             → HMM 时序平滑 → 90分钟周期约束
               → SwiftData 持久化 + UI 实时更新
 ```
-
-## 统计
-
-| 指标 | 数值 |
-|------|------|
-| Swift 源文件 | 137 |
-| C 源文件 | 4 |
-| Swift 代码行 | 9,377 |
-| C 代码行 | ~370 |
-| 单元测试 | 61 |
-| Core ML 模型 | 3 (5.1 MB) |
-| 支持语言 | 3 (en/zh-Hans/zh-Hant) |
-| L10n 翻译键 | 160+ |
-| Git 提交 | 39 |
 
 ## 许可证
 

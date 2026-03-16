@@ -323,7 +323,7 @@ struct NoiseTrainingDetailView: View {
                     .buttonStyle(.plain)
                     .disabled(isMixing)
                 } else if !sourceTracks.isEmpty {
-                    Text("点击声源卡片可多选").font(.system(size: 10)).foregroundStyle(AppColors.textTertiary)
+                    Text("可组合播放").font(.system(size: 10)).foregroundStyle(AppColors.textTertiary)
                 }
             }
             ForEach($sourceTracks) { $track in
@@ -921,7 +921,6 @@ private struct SourceTrackView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: AppSpacing.cardCornerRadius))
         .contentShape(Rectangle())
-        .onTapGesture { onTap() }
         .onAppear {
             selectedType = track.noiseType.rawValue
             noteText = track.userLabel ?? ""
@@ -955,19 +954,6 @@ private struct SourceTrackView: View {
             Spacer()
 
             if track.isConfirmed {
-                HStack(spacing: 3) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 10))
-                    Text("已标注")
-                        .font(.system(size: 10))
-                }
-                .foregroundStyle(AppColors.success)
-                .padding(.horizontal, 7).padding(.vertical, 3)
-                .background(AppColors.success.opacity(0.1))
-                .clipShape(Capsule())
-            }
-
-            if isSelected {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 12))
                     .foregroundStyle(AppColors.primary)
