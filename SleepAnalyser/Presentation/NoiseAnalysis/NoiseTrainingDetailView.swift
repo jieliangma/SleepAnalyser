@@ -682,7 +682,8 @@ struct NoiseTrainingDetailView: View {
                 id: track.id, sessionId: capture.id,
                 timestamp: capture.date, endTime: capture.date.addingTimeInterval(capDur),
                 noiseType: track.noiseType.rawValue, confidence: Double(track.confidence),
-                energyDB: energyDB, layer: track.layer
+                energyDB: energyDB, layer: track.layer, isConfirmed: track.isConfirmed,
+                userLabel: track.userLabel
             ))
         }
         try? context.save()
