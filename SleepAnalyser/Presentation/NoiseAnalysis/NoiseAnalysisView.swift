@@ -19,7 +19,10 @@ struct NoiseAnalysisView: View {
     @State private var commandMonitor: Any?
     @State private var hoveredCardId: UUID?
     @State private var hoveredWaveformId: UUID?
-    @State private var scrollOffset: [UUID: CGFloat] = [:]
+    @State private var panAccumulated: [UUID: CGFloat] = [:]
+    @State private var panDragBase: [UUID: CGFloat] = [:]
+    @State private var isDragging: [UUID: Bool] = [:]
+    @State private var cursorMonitor: Any?
 
     enum WaveformTool { case select, pan }
     @State private var manualSelectStart: CGFloat?
@@ -51,13 +54,21 @@ struct NoiseAnalysisView: View {
                 if cmd != commandKeyDown {
                     DispatchQueue.main.async {
                         commandKeyDown = cmd
+                        updateCursorForCurrentState()
                     }
+                }
+                return event
+            }
+            cursorMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .mouseEntered, .mouseExited]) { event in
+                if hoveredWaveformId != nil {
+                    updateCursorForCurrentState()
                 }
                 return event
             }
         }
         .onDisappear {
             if let commandMonitor { NSEvent.removeMonitor(commandMonitor) }
+            if let cursorMonitor { NSEvent.removeMonitor(cursorMonitor) }
         }
         .sheet(item: $editingSegment) { seg in
             NoiseSegmentEditorView(segment: seg, onSave: { updated in
@@ -210,7 +221,7 @@ struct NoiseAnalysisView: View {
                         .font(.system(size: 11)).foregroundStyle(AppColors.primary)
                 }
                 .buttonStyle(.plain)
-                if commandKeyDown && hoveredCardId == cap.id {
+                HStack(spacing: 0) {
                     Button {
                         toolMode[cap.id] = .select
                     } label: {
@@ -234,6 +245,8 @@ struct NoiseAnalysisView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                .opacity(commandKeyDown && hoveredCardId == cap.id ? 1 : 0)
+                .animation(.easeInOut(duration: 0.15), value: commandKeyDown && hoveredCardId == cap.id)
                 Spacer()
                 if !segs.isEmpty { noiseSummaryBadges(segs) }
                 Button { Task { await reanalyzeCapture(cap) } } label: {
@@ -272,115 +285,129 @@ struct NoiseAnalysisView: View {
 
     private func waveformView(amps: [Float], segs: [NoiseSegment], capture: NoiseCaptureRecorder.CaptureInfo) -> some View {
         let zoom = zoomScales[capture.id] ?? 1.0
+        let panOffset = panAccumulated[capture.id] ?? 0
 
         return GeometryReader { geo in
             let baseW = geo.size.width
             let totalW = baseW * zoom
-            ScrollView(.horizontal, showsIndicators: true) {
-                Canvas { context, size in
-                    let w = size.width, h = size.height, midY = h / 2
-                    guard !amps.isEmpty else { return }
+            let maxOffset = max(0, totalW - baseW)
+            let clampedOffset = min(max(0, -panOffset), maxOffset)
 
-                    let maxAmp = amps.max() ?? 1
-                    let ampScale: Float = maxAmp > 0 ? 1.0 / maxAmp : 1.0
-                    let totalDur = appState.audioPlayer.duration > 0
-                        ? appState.audioPlayer.duration
-                        : Double(amps.count) / 15.0
+            Canvas { context, size in
+                let w = size.width, h = size.height, midY = h / 2
+                guard !amps.isEmpty else { return }
 
-                    let pixelCount = Int(w)
-                    for px in 0..<pixelCount {
-                        let srcIdx = Double(px) / w * Double(amps.count)
-                        let lo = Int(srcIdx)
-                        let hi = min(lo + 1, amps.count - 1)
-                        let frac = Float(srcIdx - Double(lo))
-                        let amp = amps[lo] * (1 - frac) + amps[hi] * frac
+                let maxAmp = amps.max() ?? 1
+                let ampScale: Float = maxAmp > 0 ? 1.0 / maxAmp : 1.0
+                let totalDur = appState.audioPlayer.duration > 0
+                    ? appState.audioPlayer.duration
+                    : Double(amps.count) / 15.0
 
-                        let norm = Double(amp * ampScale)
-                        let barH = max(norm * h * 0.92, 0.5)
-                        let sampleTime = Double(px) / w * totalDur
-                        let dominantSeg = segs.first { seg in
-                            let t0 = seg.timestamp.timeIntervalSince(capture.date)
-                            let t1 = seg.endTime.timeIntervalSince(capture.date)
-                            return seg.layer == 0 && sampleTime >= t0 && sampleTime < t1
-                        }
-                        let barColor = dominantSeg.map { noiseColor($0.noiseType).opacity(0.75) }
-                            ?? AppColors.primary.opacity(0.45)
-                        var p = Path()
-                        p.addRect(CGRect(x: Double(px), y: midY - barH / 2, width: 1, height: barH))
-                        context.fill(p, with: .color(barColor))
+                let visibleStart = clampedOffset / totalW
+                let visibleEnd = min(1.0, (clampedOffset + baseW) / totalW)
+
+                let pixelCount = Int(baseW)
+                for px in 0..<pixelCount {
+                    let normalizedX = visibleStart + Double(px) / Double(pixelCount) * (visibleEnd - visibleStart)
+                    let srcIdx = normalizedX * Double(amps.count)
+                    let lo = max(0, min(Int(srcIdx), amps.count - 1))
+                    let hi = min(lo + 1, amps.count - 1)
+                    let frac = Float(srcIdx - Double(lo))
+                    let amp = amps[lo] * (1 - frac) + amps[hi] * frac
+
+                    let norm = Double(amp * ampScale)
+                    let barH = max(norm * h * 0.92, 0.5)
+                    let sampleTime = normalizedX * totalDur
+                    let dominantSeg = segs.first { seg in
+                        let t0 = seg.timestamp.timeIntervalSince(capture.date)
+                        let t1 = seg.endTime.timeIntervalSince(capture.date)
+                        return seg.layer == 0 && sampleTime >= t0 && sampleTime < t1
                     }
+                    let barColor = dominantSeg.map { noiseColor($0.noiseType).opacity(0.75) }
+                        ?? AppColors.primary.opacity(0.45)
+                    var p = Path()
+                    p.addRect(CGRect(x: Double(px), y: midY - barH / 2, width: 1, height: barH))
+                    context.fill(p, with: .color(barColor))
+                }
 
-                    if appState.audioPlayer.isPlaying && appState.audioPlayer.playingEventId == capture.id && appState.audioPlayer.duration > 0 {
-                        let px = appState.audioPlayer.currentTime / appState.audioPlayer.duration * w
+                if appState.audioPlayer.isPlaying && appState.audioPlayer.playingEventId == capture.id && appState.audioPlayer.duration > 0 {
+                    let playFraction = appState.audioPlayer.currentTime / appState.audioPlayer.duration
+                    let px = (playFraction - visibleStart) / (visibleEnd - visibleStart) * Double(baseW)
+                    if px >= 0 && px <= Double(baseW) {
                         var cursor = Path()
                         cursor.move(to: CGPoint(x: px, y: 0))
                         cursor.addLine(to: CGPoint(x: px, y: h))
                         context.stroke(cursor, with: .color(.white), lineWidth: 1)
                     }
+                }
 
-                    if manualSelectCaptureId == capture.id,
-                       let s = manualSelectStart, let e = manualSelectEnd {
-                        let x1 = min(s, e), x2 = max(s, e)
-                        context.fill(
-                            Path(CGRect(x: Double(x1), y: 0, width: Double(x2 - x1), height: h)),
-                            with: .color(Color.white.opacity(0.2))
-                        )
-                        context.stroke(
-                            Path(CGRect(x: Double(x1), y: 0, width: Double(x2 - x1), height: h)),
-                            with: .color(.white.opacity(0.6)), lineWidth: 1
-                        )
-                    }
+                if manualSelectCaptureId == capture.id,
+                   let s = manualSelectStart, let e = manualSelectEnd {
+                    let x1 = min(s, e), x2 = max(s, e)
+                    context.fill(
+                        Path(CGRect(x: Double(x1), y: 0, width: Double(x2 - x1), height: h)),
+                        with: .color(Color.white.opacity(0.2))
+                    )
+                    context.stroke(
+                        Path(CGRect(x: Double(x1), y: 0, width: Double(x2 - x1), height: h)),
+                        with: .color(.white.opacity(0.6)), lineWidth: 1
+                    )
                 }
-                .frame(width: totalW, height: 100)
-                .contentShape(Rectangle())
-                .onHover { inside in
-                    hoveredWaveformId = inside ? capture.id : nil
-                    if inside {
+            }
+            .frame(width: baseW, height: 100)
+            .contentShape(Rectangle())
+            .onHover { inside in
+                hoveredWaveformId = inside ? capture.id : nil
+                updateCursorForCurrentState()
+            }
+            .gesture(
+                DragGesture(minimumDistance: 3)
+                    .onChanged { val in
                         if toolMode[capture.id] == .pan {
-                            NSCursor.openHand.set()
+                            if isDragging[capture.id] != true {
+                                isDragging[capture.id] = true
+                                panDragBase[capture.id] = panAccumulated[capture.id] ?? 0
+                                NSCursor.closedHand.push()
+                            }
+                            let base = panDragBase[capture.id] ?? 0
+                            let newOffset = base + val.translation.width
+                            let maxOff = max(0, totalW - baseW)
+                            panAccumulated[capture.id] = max(-maxOff, min(0, newOffset))
                         } else {
-                            NSCursor.iBeam.set()
+                            manualSelectCaptureId = capture.id
+                            manualSelectStart = val.startLocation.x
+                            manualSelectEnd = val.location.x
                         }
-                    } else {
-                        NSCursor.arrow.set()
                     }
-                }
-                .gesture(
-                    DragGesture(minimumDistance: 3)
-                        .onChanged { val in
-                            if toolMode[capture.id] == .pan {
-                                NSCursor.closedHand.set()
-                                let delta = val.translation.width
-                                scrollOffset[capture.id] = delta
-                            } else {
-                                manualSelectCaptureId = capture.id
-                                manualSelectStart = val.startLocation.x
-                                manualSelectEnd = val.location.x
-                            }
+                    .onEnded { val in
+                        if toolMode[capture.id] == .pan {
+                            isDragging[capture.id] = false
+                            NSCursor.pop()
+                        } else if manualSelectStart != nil {
+                            showManualTypePicker = true
                         }
-                        .onEnded { _ in
-                            if toolMode[capture.id] == .pan {
-                                NSCursor.openHand.set()
-                                scrollOffset[capture.id] = 0
-                            } else if manualSelectStart != nil {
-                                showManualTypePicker = true
-                            }
-                        }
-                )
-                .onTapGesture { loc in
-                    if manualSelectStart != nil {
-                        manualSelectStart = nil; manualSelectEnd = nil; manualSelectCaptureId = nil
-                    } else if appState.audioPlayer.duration > 0, appState.audioPlayer.playingEventId == capture.id {
-                        appState.audioPlayer.seek(to: loc.x / totalW * appState.audioPlayer.duration)
                     }
+            )
+            .onTapGesture { loc in
+                if manualSelectStart != nil {
+                    manualSelectStart = nil; manualSelectEnd = nil; manualSelectCaptureId = nil
+                } else if appState.audioPlayer.duration > 0, appState.audioPlayer.playingEventId == capture.id {
+                    let visibleStart = clampedOffset / totalW
+                    let visibleEnd = min(1.0, (clampedOffset + baseW) / totalW)
+                    let fraction = visibleStart + loc.x / baseW * (visibleEnd - visibleStart)
+                    appState.audioPlayer.seek(to: fraction * appState.audioPlayer.duration)
                 }
-                .gesture(MagnificationGesture().onChanged { val in
-                    zoomScales[capture.id] = max(1.0, min(10.0, val))
-                })
-                .onScrollWheelZoom { delta in
-                    let current = zoomScales[capture.id] ?? 1.0
-                    zoomScales[capture.id] = max(1.0, min(10.0, current + delta))
-                }
+            }
+            .gesture(MagnificationGesture().onChanged { val in
+                zoomScales[capture.id] = max(1.0, min(10.0, val))
+            })
+            .onScrollWheelZoom { delta in
+                let current = zoomScales[capture.id] ?? 1.0
+                let newZoom = max(1.0, min(10.0, current + delta))
+                zoomScales[capture.id] = newZoom
+                let newMaxOffset = max(0, baseW * newZoom - baseW)
+                let currentPan = panAccumulated[capture.id] ?? 0
+                panAccumulated[capture.id] = max(-newMaxOffset, min(0, currentPan))
             }
         }
         .frame(height: 100)
@@ -625,6 +652,21 @@ struct NoiseAnalysisView: View {
     }
 
     // MARK: - Helpers
+
+    private func updateCursorForCurrentState() {
+        guard let waveformId = hoveredWaveformId else {
+            NSCursor.arrow.set()
+            return
+        }
+        if isDragging[waveformId] == true {
+            return
+        }
+        if toolMode[waveformId] == .pan {
+            NSCursor.openHand.set()
+        } else {
+            NSCursor.iBeam.set()
+        }
+    }
 
     private func captureDateString(_ date: Date) -> String {
         let fmt = DateFormatter()
