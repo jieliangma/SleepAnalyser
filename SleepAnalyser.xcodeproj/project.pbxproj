@@ -105,6 +105,7 @@
 		708D27ED098C3DEDAB5612B6 = {isa = PBXBuildFile; fileRef = EC2B4CCCD2BC27884A735175; };
 		ACCF755F1B37FBFC1A909D67 = {isa = PBXBuildFile; fileRef = C30C5E8E87277A7BEE4FBD9F; };
 		AA4D93D492E83DC3E4D3CDBF = {isa = PBXBuildFile; fileRef = 252519FAC8B37FB400543E90; };
+		BE3F12A4C8D59E2F1A720468 = {isa = PBXBuildFile; fileRef = BE3F12A3C8D59E2F1A720468; };
 		B588202CED89B356604A7F5E = {isa = PBXBuildFile; fileRef = 5F9001A8C24AA413302005D5; };
 		62715958867D3D4B1D21F506 = {isa = PBXBuildFile; fileRef = 26F51C1AADE6FAB86EE58C2D; };
 		4665ADEA6F325262972DB701 = {isa = PBXBuildFile; fileRef = 7290B19BE8B5443A8042DEB8; };
@@ -266,6 +267,7 @@
 		EC2B4CCCD2BC27884A735175 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MenuBarView.swift"; sourceTree = "<group>"; };
 		C30C5E8E87277A7BEE4FBD9F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoiseAnalysisView.swift"; sourceTree = "<group>"; };
 		252519FAC8B37FB400543E90 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoiseTypeManagementView.swift"; sourceTree = "<group>"; };
+		BE3F12A3C8D59E2F1A720468 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoiseTrainingDetailView.swift"; sourceTree = "<group>"; };
 		5F9001A8C24AA413302005D5 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProfileListView.swift"; sourceTree = "<group>"; };
 		26F51C1AADE6FAB86EE58C2D = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioRecordingsView.swift"; sourceTree = "<group>"; };
 		7290B19BE8B5443A8042DEB8 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EventEditorView.swift"; sourceTree = "<group>"; };
@@ -639,7 +641,7 @@
 		};
 		A7089C456C27E371AA7ADC53 = {
 			isa = PBXGroup;
-			children = (C30C5E8E87277A7BEE4FBD9F, 252519FAC8B37FB400543E90);
+			children = (C30C5E8E87277A7BEE4FBD9F, 252519FAC8B37FB400543E90, BE3F12A3C8D59E2F1A720468);
 			path = "NoiseAnalysis";
 			sourceTree = "<group>";
 		};
@@ -983,6 +985,7 @@
 				708D27ED098C3DEDAB5612B6,
 				ACCF755F1B37FBFC1A909D67,
 				AA4D93D492E83DC3E4D3CDBF,
+				BE3F12A4C8D59E2F1A720468,
 				B588202CED89B356604A7F5E,
 				62715958867D3D4B1D21F506,
 				4665ADEA6F325262972DB701,

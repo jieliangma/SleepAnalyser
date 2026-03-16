@@ -194,4 +194,17 @@ enum NoiseTypeLabel: String, CaseIterable, Sendable {
         case .unknown: return NS_NOISE_UNKNOWN
         }
     }
+
+    var bandHz: (lo: Float, hi: Float) {
+        switch self {
+        case .quiet:      return (20, 200)
+        case .wind:       return (20, 80)
+        case .traffic:    return (80, 2000)
+        case .motorcycle: return (80, 500)
+        case .hvac:       return (80, 1000)
+        case .rain:       return (1000, 8000)
+        case .speech:     return (300, 4000)
+        case .unknown:    return (20, 8000)
+        }
+    }
 }
