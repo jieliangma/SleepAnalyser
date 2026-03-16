@@ -56,7 +56,11 @@
 "settings.privacy" = "Privacy";
 "settings.about" = "About";
 "settings.audioInput" = "Audio Input";
+"settings.audioInputOutput" = "Input / Output";
+"settings.audioOutput" = "Audio Output";
 "settings.microphone" = "Microphone";
+"settings.speaker" = "Speaker";
+"settings.defaultSpeaker" = "System Default";
 "settings.sensitivity" = "Sensitivity";
 "settings.calibrateRoom" = "Calibrate Room";
 "calibration.intro" = "Place your device where it will be during sleep. We'll record 10 seconds of ambient sound to learn your room's noise profile and optimize detection accuracy.";

@@ -84,7 +84,7 @@ private struct AudioSettingsSection: View {
         VStack(spacing: 0) {
             HStack(spacing: AppSpacing.xs) {
                 audioSubTabButton(L10n.noiseAnalysis, tag: 0)
-                audioSubTabButton(L10n.audioInput, tag: 1)
+                audioSubTabButton(L10n.audioInputOutput, tag: 1)
                 audioSubTabButton(L10n.noiseTypes, tag: 2)
                 audioSubTabButton(L10n.audioFilterTest, tag: 3)
             }
@@ -96,7 +96,10 @@ private struct AudioSettingsSection: View {
             case 0: NoiseAnalysisView()
             case 1:
                 ScrollView {
-                    VStack(spacing: AppSpacing.lg) { AudioSection() }.padding(AppSpacing.lg)
+                    VStack(spacing: AppSpacing.lg) {
+                        AudioSection()
+                        AudioOutputSection()
+                    }.padding(AppSpacing.lg)
                 }
             case 2: NoiseTypeManagementView()
             case 3:
@@ -325,6 +328,31 @@ private struct AudioSection: View {
             Text(label).font(AppTypography.body).foregroundStyle(AppColors.textSecondary)
             Spacer()
             Text(value).font(AppTypography.body).foregroundStyle(AppColors.textPrimary)
+        }
+    }
+}
+
+private struct AudioOutputSection: View {
+    @Environment(AppState.self) private var appState
+    @State private var selectedDeviceUID: String = ""
+
+    var body: some View {
+        SettingsCard(title: L10n.audioOutput, icon: "speaker.wave.2.fill") {
+            VStack(alignment: .leading, spacing: AppSpacing.md) {
+                Picker(L10n.speaker, selection: $selectedDeviceUID) {
+                    Text(L10n.defaultSpeaker).tag("")
+                    ForEach(appState.deviceManager.availableOutputDevices, id: \.id) { device in
+                        Text(device.name).tag(device.id)
+                    }
+                }
+                .onChange(of: selectedDeviceUID) { _, newUID in
+                    if newUID.isEmpty { return }
+                    appState.deviceManager.setDefaultOutputDevice(uid: newUID)
+                }
+            }
+        }
+        .onAppear {
+            selectedDeviceUID = appState.deviceManager.defaultOutputDeviceUID
         }
     }
 }

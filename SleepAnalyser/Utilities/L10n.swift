@@ -78,7 +78,11 @@ enum L10n {
     static var languageSelection: String { s("settings.languageSelection") }
     static var languageNote: String { s("settings.languageNote") }
     static var audioInput: String { s("settings.audioInput") }
+    static var audioInputOutput: String { s("settings.audioInputOutput") }
+    static var audioOutput: String { s("settings.audioOutput") }
     static var microphone: String { s("settings.microphone") }
+    static var speaker: String { s("settings.speaker") }
+    static var defaultSpeaker: String { s("settings.defaultSpeaker") }
     static var sensitivity: String { s("settings.sensitivity") }
     static var calibrateRoom: String { s("settings.calibrateRoom") }
     static var calibrationIntro: String { s("calibration.intro") }

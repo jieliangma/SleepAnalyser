@@ -4,11 +4,30 @@ import Combine
 
 final class AVAudioInputDeviceManager: @unchecked Sendable {
     private var devices: [AudioInputDevice] = []
+    private var outputDevices: [AudioOutputDevice] = []
     private let devicesSubject = CurrentValueSubject<[AudioInputDevice], Never>([])
     private var propertyListenerBlock: AudioObjectPropertyListenerBlock?
 
     var availableDevices: [AudioInputDevice] { devices }
+    var availableOutputDevices: [AudioOutputDevice] { outputDevices }
     var devicesPublisher: AnyPublisher<[AudioInputDevice], Never> { devicesSubject.eraseToAnyPublisher() }
+
+    var defaultOutputDeviceID: AudioDeviceID {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var deviceID: AudioDeviceID = kAudioDeviceUnknown
+        var dataSize = UInt32(MemoryLayout<AudioDeviceID>.size)
+        AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &dataSize, &deviceID)
+        return deviceID
+    }
+
+    var defaultOutputDeviceUID: String {
+        let id = defaultOutputDeviceID
+        return id != kAudioDeviceUnknown ? (getDeviceUID(deviceID: id) ?? "") : ""
+    }
 
     init() {
         refreshDevices()
@@ -49,7 +68,43 @@ final class AVAudioInputDeviceManager: @unchecked Sendable {
             let channels = getInputChannelCount(deviceID: deviceID)
             return AudioInputDevice(id: uid, name: name, sampleRate: sampleRate, channelCount: channels)
         }
+
+        outputDevices = deviceIDs.compactMap { deviceID -> AudioOutputDevice? in
+            guard hasOutputStreams(deviceID: deviceID) else { return nil }
+            let name = getDeviceName(deviceID: deviceID) ?? "Unknown"
+            let uid = getDeviceUID(deviceID: deviceID) ?? "\(deviceID)"
+            return AudioOutputDevice(id: uid, deviceID: deviceID, name: name)
+        }
+
         devicesSubject.send(devices)
+    }
+
+    @discardableResult
+    func setDefaultOutputDevice(uid: String) -> Bool {
+        guard let device = outputDevices.first(where: { $0.id == uid }) else { return false }
+        var deviceID = device.deviceID
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        let status = AudioObjectSetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address, 0, nil,
+            UInt32(MemoryLayout<AudioDeviceID>.size), &deviceID
+        )
+        return status == noErr
+    }
+
+    private func hasOutputStreams(deviceID: AudioDeviceID) -> Bool {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyStreams,
+            mScope: kAudioDevicePropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var dataSize: UInt32 = 0
+        let status = AudioObjectGetPropertyDataSize(deviceID, &address, 0, nil, &dataSize)
+        return status == noErr && dataSize > 0
     }
 
     private func hasInputStreams(deviceID: AudioDeviceID) -> Bool {

@@ -56,7 +56,11 @@
 "settings.privacy" = "隐私";
 "settings.about" = "关于";
 "settings.audioInput" = "音频输入";
+"settings.audioInputOutput" = "输入输出";
+"settings.audioOutput" = "音频输出";
 "settings.microphone" = "麦克风";
+"settings.speaker" = "扬声器";
+"settings.defaultSpeaker" = "系统默认";
 "settings.sensitivity" = "灵敏度";
 "settings.calibrateRoom" = "校准房间";
 "calibration.intro" = "将设备放在睡眠时的位置。我们将录制 10 秒环境声音，学习房间噪声特征，优化检测精准度。";
